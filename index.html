@@ -5,12 +5,21 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Plantilla jugable 1:1 del Campus Gustavo Galindo de ESPOL, con terreno 3D real, edificios OSM y vegetación del Bosque Protector Prosperina." />
+  <meta name="description" content="Plantilla jugable 1:1 del Campus Gustavo Galindo: relieve métrico, edificios cartográficos, bosque seco calibrado y cámaras de mapa/tercera/primera persona." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
+  <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="./assets/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="map" aria-label="Mundo 3D de ESPOL"></div>
@@ -21,18 +30,19 @@
       <h1>ESPOL Builder</h1>
       <p id="loadingText">Cargando terreno 1:1…</p>
       <div class="bar"><span id="loadingBar"></span></div>
-      <small>DEM real + OpenStreetMap + reconstrucción ecológica procedural</small>
+      <small>DEM real + cartografía abierta + investigación institucional ESPOL</small>
     </div>
   </div>
 
   <header class="topbar glass">
     <div>
       <strong>ESPOL BUILDER</strong>
-      <span class="badge">v0.1 · GEO 1:1</span>
+      <span class="badge">v0.3.1 · GEO 1:1</span>
     </div>
     <div class="top-actions">
-      <button id="btnOverview" title="Vista general">Mapa</button>
-      <button id="btnFollow" class="active" title="Seguir jugador">Seguir</button>
+      <button id="btnOverview" title="Mapa libre (1)">Mapa</button>
+      <button id="btnFollow" class="active" title="Tercera persona (2)">3ª persona</button>
+      <button id="btnFirstPerson" title="Primera persona (3)">1ª persona</button>
       <button id="btnFullscreen" title="Pantalla completa">⛶</button>
     </div>
   </header>
@@ -42,11 +52,14 @@
       <div><span>Distancia</span><b id="distance">0 m</b></div>
       <div><span>Altitud</span><b id="altitude">—</b></div>
       <div><span>Velocidad</span><b id="speed">0 km/h</b></div>
+      <div><span>Movimiento</span><b id="pace">Quieto</b></div>
       <div><span>Rumbo</span><b id="bearing">0°</b></div>
+      <div><span>Vista</span><b id="viewMode">3ª persona</b></div>
     </div>
+    <div class="coords"><span>Posición</span><b id="coords">—</b></div>
     <div class="objective">
       <span>Exploración</span>
-      <b id="objective">Visita 3 hitos del campus</b>
+      <b id="objective">Visita 3 hitos del sector FIEC/FIMCP</b>
       <div id="progressDots" class="progress-dots"></div>
     </div>
   </section>
@@ -61,20 +74,22 @@
     </div>
 
     <div class="control-row">
-      <label><input id="terrainToggle" type="checkbox" checked> Relieve 3D real</label>
-      <label><input id="buildingsToggle" type="checkbox" checked> Edificios 3D</label>
-      <label><input id="treesToggle" type="checkbox" checked> Árboles procedurales</label>
-      <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio</label>
+      <label><input id="terrainToggle" type="checkbox" checked> Relieve 3D real · 1× vertical</label>
+      <label><input id="buildingsToggle" type="checkbox" checked> Edificios 3D OSM/OpenFreeMap</label>
+      <label><input id="treesToggle" type="checkbox" checked> Bosque + árboles 3D cercanos</label>
+      <label><input id="imageryToggle" type="checkbox" checked> Foto aérea en 1ª/3ª persona</label>
+      <label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label>
+      <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label>
     </div>
 
     <div class="season-card">
-      <div><span>Estación</span><b id="seasonLabel">Seca</b></div>
+      <div><span>Estado del bosque</span><b id="seasonLabel">Seca</b></div>
       <input id="season" type="range" min="0" max="100" value="25" />
-      <div class="season-scale"><span>jun–dic</span><span>ene–may</span></div>
+      <div class="season-scale"><span>más seco</span><span>más verde</span></div>
     </div>
 
     <div class="mode-card">
-      <span>Modo de juego base</span>
+      <span>Plantilla de juego</span>
       <select id="gameMode">
         <option value="explore">Exploración</option>
         <option value="horror">Terror nocturno</option>
@@ -83,21 +98,31 @@
       </select>
     </div>
 
-    <div class="legend">
-      <div><i class="dot player"></i>Jugador</div>
-      <div><i class="dot poi"></i>Hitos</div>
-      <div><i class="dot forest"></i>Vegetación BPP</div>
+    <div class="fact-strip">
+      <div><b>80%</b><span>vegetación forestal</span></div>
+      <div><b>3%</b><span>edificaciones</span></div>
+      <div><b>1:1</b><span>escala métrica</span></div>
     </div>
 
+    <details open>
+      <summary>Qué cambió</summary>
+      <p class="fineprint">Mapa libre con zoom/pan real; tercera persona física; primera persona a 1,68 m; avatar de ~1,80 m; foto aérea opcional en juego; bosque calibrado con parcelas ESPOL de 125, 179 y 226 m.</p>
+    </details>
+
     <details>
-      <summary>Especies documentadas</summary>
+      <summary>Edificios documentados</summary>
+      <div id="buildingList" class="building-list"></div>
+    </details>
+
+    <details>
+      <summary>Especies incorporadas</summary>
       <div id="speciesList" class="species-list"></div>
     </details>
 
     <details>
-      <summary>Fidelidad y fuentes</summary>
-      <p class="fineprint">El relieve usa tiles de elevación global en metros. Los edificios y vías proceden de cartografía abierta. La ubicación de árboles individuales es procedural: las fuentes de ESPOL documentan especies, morfología y ecosistema, pero no un inventario georreferenciado completo árbol por árbol.</p>
-      <a class="source-link" href="./README.md" target="_blank" rel="noopener">Ver metodología completa</a>
+      <summary>Fidelidad y límites</summary>
+      <p class="fineprint">La topografía y el desplazamiento trabajan en metros. Las huellas de edificios y vías dependen de cartografía abierta. Los bloques/funciones se contrastan con páginas oficiales de ESPOL. Los árboles individuales son procedurales; las parcelas de investigación calibran especies y estructura, no posiciones árbol-por-árbol.</p>
+      <a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a>
     </details>
   </aside>
 
@@ -106,14 +131,16 @@
   <div class="controls glass">
     <b>CONTROLES</b>
     <span><kbd>WASD</kbd> mover</span>
-    <span><kbd>Q / E</kbd> girar</span>
-    <span><kbd>Shift</kbd> correr</span>
-    <span><kbd>R</kbd> reiniciar</span>
-    <span>Arrastra el mapa para inspeccionar</span>
+    <span><kbd>Q/E</kbd> girar</span>
+    <span><kbd>Shift</kbd> sprint ×2.5</span>
+    <span><kbd>1/2/3</kbd> cámaras</span>
+    <span><kbd>R</kbd> reaparecer FIEC</span>
+    <span class="map-help">Mapa: rueda + arrastrar</span>
+    <span class="fp-help">1ª persona: arrastrar = mirar</span>
   </div>
 
   <div id="toast" class="toast glass" aria-live="polite"></div>
-  <div id="crosshair" class="crosshair">＋</div>
+  <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
 
   <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
   <script type="module" src="./src/app.js"></script>
