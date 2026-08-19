@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="theme-color" content="#07131f" />
+  <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
+  <meta name="description" content="Plantilla jugable 1:1 del Campus Gustavo Galindo de ESPOL, con terreno 3D real, edificios OSM y vegetación del Bosque Protector Prosperina." />
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+  <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous" />
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <div id="map" aria-label="Mundo 3D de ESPOL"></div>
+
+  <div id="loading" class="loading-screen">
+    <div class="loader-card">
+      <div class="loader-mark">EB</div>
+      <h1>ESPOL Builder</h1>
+      <p id="loadingText">Cargando terreno 1:1…</p>
+      <div class="bar"><span id="loadingBar"></span></div>
+      <small>DEM real + OpenStreetMap + reconstrucción ecológica procedural</small>
+    </div>
+  </div>
+
+  <header class="topbar glass">
+    <div>
+      <strong>ESPOL BUILDER</strong>
+      <span class="badge">v0.1 · GEO 1:1</span>
+    </div>
+    <div class="top-actions">
+      <button id="btnOverview" title="Vista general">Mapa</button>
+      <button id="btnFollow" class="active" title="Seguir jugador">Seguir</button>
+      <button id="btnFullscreen" title="Pantalla completa">⛶</button>
+    </div>
+  </header>
+
+  <section class="hud glass" id="hud">
+    <div class="hud-grid">
+      <div><span>Distancia</span><b id="distance">0 m</b></div>
+      <div><span>Altitud</span><b id="altitude">—</b></div>
+      <div><span>Velocidad</span><b id="speed">0 km/h</b></div>
+      <div><span>Rumbo</span><b id="bearing">0°</b></div>
+    </div>
+    <div class="objective">
+      <span>Exploración</span>
+      <b id="objective">Visita 3 hitos del campus</b>
+      <div id="progressDots" class="progress-dots"></div>
+    </div>
+  </section>
+
+  <aside class="panel glass" id="panel">
+    <div class="panel-head">
+      <div>
+        <small>CAPAS DEL MUNDO</small>
+        <h2>Campus Gustavo Galindo</h2>
+      </div>
+      <button id="panelToggle" aria-label="Ocultar panel">×</button>
+    </div>
+
+    <div class="control-row">
+      <label><input id="terrainToggle" type="checkbox" checked> Relieve 3D real</label>
+      <label><input id="buildingsToggle" type="checkbox" checked> Edificios 3D</label>
+      <label><input id="treesToggle" type="checkbox" checked> Árboles procedurales</label>
+      <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio</label>
+    </div>
+
+    <div class="season-card">
+      <div><span>Estación</span><b id="seasonLabel">Seca</b></div>
+      <input id="season" type="range" min="0" max="100" value="25" />
+      <div class="season-scale"><span>jun–dic</span><span>ene–may</span></div>
+    </div>
+
+    <div class="mode-card">
+      <span>Modo de juego base</span>
+      <select id="gameMode">
+        <option value="explore">Exploración</option>
+        <option value="horror">Terror nocturno</option>
+        <option value="rpg">RPG</option>
+        <option value="shooter">Shooter sandbox</option>
+      </select>
+    </div>
+
+    <div class="legend">
+      <div><i class="dot player"></i>Jugador</div>
+      <div><i class="dot poi"></i>Hitos</div>
+      <div><i class="dot forest"></i>Vegetación BPP</div>
+    </div>
+
+    <details>
+      <summary>Especies documentadas</summary>
+      <div id="speciesList" class="species-list"></div>
+    </details>
+
+    <details>
+      <summary>Fidelidad y fuentes</summary>
+      <p class="fineprint">El relieve usa tiles de elevación global en metros. Los edificios y vías proceden de cartografía abierta. La ubicación de árboles individuales es procedural: las fuentes de ESPOL documentan especies, morfología y ecosistema, pero no un inventario georreferenciado completo árbol por árbol.</p>
+      <a class="source-link" href="./README.md" target="_blank" rel="noopener">Ver metodología completa</a>
+    </details>
+  </aside>
+
+  <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
+
+  <div class="controls glass">
+    <b>CONTROLES</b>
+    <span><kbd>WASD</kbd> mover</span>
+    <span><kbd>Q / E</kbd> girar</span>
+    <span><kbd>Shift</kbd> correr</span>
+    <span><kbd>R</kbd> reiniciar</span>
+    <span>Arrastra el mapa para inspeccionar</span>
+  </div>
+
+  <div id="toast" class="toast glass" aria-live="polite"></div>
+  <div id="crosshair" class="crosshair">＋</div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
