@@ -1,102 +1,249 @@
 # ESPOL Builder — Campus Gustavo Galindo jugable 1:1
 
-Prototipo web de mundo abierto del Campus Gustavo Galindo de ESPOL. Está diseñado como **master map reutilizable** para exploración, terror, RPG o shooter y funciona como sitio estático en GitHub Pages.
+**v0.3.1** — plantilla web de mundo abierto del Campus Gustavo Galindo de ESPOL, pensada como `master map` reutilizable para exploración, terror, RPG o shooter y desplegable como sitio estático en GitHub Pages.
 
-## Qué es fiel y qué no
+La meta no es afirmar que existe un gemelo digital arquitectónico perfecto. La meta es que el mundo conserve **escala, relieve, estructura del campus, masa forestal e hitos reconocibles**, y que cada mejora esté separada entre dato medido, cartografía pública e inferencia procedural.
 
-### Geometría y escala
+## Novedades v0.3.1
 
-- El mundo usa coordenadas geográficas reales; el desplazamiento del jugador se calcula en metros sobre WGS84 aproximado localmente. **1 metro de movimiento del juego corresponde aproximadamente a 1 metro sobre el terreno.**
-- El rectángulo de trabajo se tomó del levantamiento GIS publicado para el Campus Gustavo Galindo: 2°07′52″–2°09′25″ S y 79°56′33″–79°58′57″ W.
-- El relieve proviene de **Mapzen Terrain Tiles / AWS Open Data** en formato Terrarium. La elevación se representa en metros y MapLibre la renderiza como terreno 3D.
-- Los edificios se extruyen desde datos de OpenStreetMap/OpenFreeMap cuando existe altura cartografiada; cuando no existe, la capa usa una altura visual por defecto.
+- Vista **Mapa** separada de la cámara del jugador: ahora la rueda hace zoom y el arrastre desplaza el mapa sin que el `gameLoop` vuelva a centrarlo cada frame.
+- **Tercera persona** con cámara física detrás del jugador.
+- **Primera persona** con cámara situada a **1,68 m sobre el terreno**.
+- Avatar humano procedural original de ~**1,80 m**, con estética de agente de survival-horror (cabello claro, chaqueta de campo, pantalón cargo y arnés) sin copiar ni redistribuir un modelo de un videojuego comercial.
+- Spawn exterior aproximado del **Auditorio FIEC / bloque 11A**.
+- Trote base **2,6 m/s = 9,36 km/h**.
+- `Shift` multiplica la velocidad exactamente **×2,5**: **6,5 m/s = 23,4 km/h**.
+- Foto aérea opcional en 1ª/3ª persona; el modo Mapa conserva la cartografía vectorial actual.
+- Árboles 3D con varias siluetas: copa redonda, parasol, abierta y ceibo/gran emergente.
+- Reconstrucción forestal calibrada con las **tres parcelas permanentes** del estudio florístico ESPOL 2024/2025, no solo con una lista genérica de especies.
+- Catálogo de bloques FIEC/FIMCP/FICT/FADCOM y otros sectores para orientar próximas correcciones arquitectónicas.
 
-### Bosque y árboles
+## Escala, relieve y movimiento
 
-La distribución **de árboles individuales no pretende ser un censo real**. ESPOL publica especies, biodiversidad, características y contexto ecológico, pero no encontramos en esta pasada un inventario abierto completo con coordenadas de cada árbol. Por ello la app usa una nube procedural reproducible que:
+- Las posiciones usan longitud/latitud reales.
+- El movimiento se integra en metros: **1 m del juego ≈ 1 m del mundo real** a escala local.
+- El rectángulo de trabajo se tomó del estudio GIS del Campus Gustavo Galindo: aproximadamente **2°07′52″–2°09′25″ S** y **79°56′33″–79°58′57″ W**.
+- El estudio GIS analiza unas **696 ha**, clasifica accesos >1,8 m y senderos <1,8 m y documenta cerca de **22,98 km** de rutas combinadas.
+- El relieve se obtiene de **Mapzen Terrain Tiles / AWS Open Data** en formato Terrarium. MapLibre lo interpreta en metros y se usa **exageración vertical 1×**.
+- Una tesis de ESPOL documenta un plano topográfico institucional de 2016 con **curvas de nivel principales cada 5 m**. El archivo CAD/GIS original no está publicado dentro de este repositorio; si ESPOL lo libera, sería una fuente superior al DEM global.
 
-- favorece el sector occidental y áreas fuera del núcleo académico;
-- usa únicamente especies documentadas en el catálogo institucional del Bosque Protector Prosperina para el conjunto principal;
-- aplica alturas máximas publicadas para varias especies (por ejemplo Ceibo, Guayacán, Pechiche, Samán, Palo Santo, Algarrobo, Pretino y Muyuyo);
-- cambia visualmente entre estación seca y lluviosa de acuerdo con la descripción del bosque seco estacional.
+## Cámaras
 
-## Datos usados y decisiones de diseño
+### 1 — Mapa
 
-### Campus, rutas y zonificación
+Es la vista cartográfica. No recibe correcciones de cámara desde el bucle del jugador.
 
-**Ching-Ávalos et al. (2020), “Use of Geographic Information Systems for mapping a cartographic baseline of trails in Gustavo Galindo Campus”.**
+- rueda: zoom;
+- arrastre: pan;
+- clic derecho/gesto equivalente: rotación/inclinación;
+- controles `+/-` de MapLibre disponibles;
+- escala métrica visible.
 
-- El área de estudio se delimita por las coordenadas citadas arriba.
-- El trabajo realizó mediciones de longitud y ancho de rutas con GPS y cinta métrica y luego procesamiento GIS.
-- Reporta aproximadamente 696 ha en el área analizada.
-- Reporta 225,67 ha para BPP dentro de su zonificación, 91,91 ha de infraestructura y 378,33 ha de zona no clasificada.
-- Clasifica accesos mayores a 1,8 m y senderos menores a 1,8 m.
-- Registra unos 22,98 km combinados de rutas en sus tablas y señala accesos del oeste hacia torres de radiofrecuencia, líneas eléctricas y el gasoducto Monteverde–Pascuales.
+### 2 — Tercera persona
 
-Fuente: https://www.researchgate.net/publication/344463996_Use_of_Geographic_Information_Systems_for_mapping_a_cartographic_baseline_of_trails_in_Gustavo_Galindo_Campus
+La cámara se coloca físicamente aproximadamente **6,5 m detrás** del personaje y a **2,9 m** sobre el terreno, mirando hacia el avatar. El personaje está modelado en metros y no como un icono de tamaño arbitrario.
 
-### Topografía e hidrología
+### 3 — Primera persona
 
-**Luna Cabrera & Méndez (2017), proyecto ESPOL sobre la ciclovía/lago.**
+La cámara se coloca sobre la coordenada del jugador a **1,68 m sobre la elevación del terreno** y mira hacia un objetivo espacial situado delante. Esto evita simular primera persona simplemente con mucho `pitch` y `zoom`.
 
-- Documenta un plano topográfico del Campus Gustavo Galindo de 2016 con curvas de nivel principales cada 5 m.
-- Documenta topobatimetría del lago y la existencia de cinco subcuencas principales.
-- Describe la Formación Cayo y materiales residuales/meteorizados en sectores del campus.
+La implementación usa `Map.calculateCameraOptionsFromTo` de MapLibre para calcular una cámara entre dos posiciones/altitudes reales.
 
-Fuente: https://dspace.espol.edu.ec/bitstream/123456789/43456/1/D-CD70248.pdf
+## Edificios e infraestructura: investigación incorporada
 
-**Sánchez Aguas (2015).** Describe la topografía del BPP desde regular hasta muy irregular y pendientes de medianas a fuertemente pronunciadas.
+La huella 3D base sigue procediendo de OpenStreetMap/OpenFreeMap. Cuando una altura existe en los datos se usa; si no, se utiliza `building:levels` y después una altura de respaldo. Esto permite conservar geometrías reales sin inventar planos completos.
 
-Fuente: https://www.dspace.espol.edu.ec/bitstream/123456789/39629/1/T-76459%20SANCHEZ%20AGUAS.pdf
+La documentación oficial de las facultades sirve para corregir identidad y nomenclatura:
 
-### Biodiversidad y árboles
+### FIEC
 
-**Bosque y Vegetación Protector Prosperina — Biodiversidad (ESPOL).** Catálogo institucional con especies de flora. Entre las especies incorporadas al generador están Ceibo, Algarrobo, Pechiche, Samán, Palo Santo, Guayacán, Guayacán negro, Nigüito, Muyuyo de montaña, Pretino, Fernán Sánchez, Caracolí, Mango, etc.
+Fuente oficial: https://www.fiec.espol.edu.ec/es/infraestructura
 
-Fuente: https://www.bosqueprotector.espol.edu.ec/biodiversidad/
+- **11A**: edificio principal; administración, Decanato/Subdecanato, Auditorio FIEC, aulas, oficinas y laboratorios.
+- **11B**: soporte técnico, administración, aulas híbridas y laboratorios de computación.
+- **11C**: laboratorios de electrónica, telecomunicaciones, potencia, redes, control, IoT y grupos de investigación.
+- **11D**: aulas, profesores, asociación de estudiantes, IEEE y clubes.
+- **11F**: profesores, clubes y sala de sesiones.
 
-**Castillo Sánchez (2021), Actualización del plan de manejo del BPP: aportes de biodiversidad.**
+La página de servicios FIEC confirma explícitamente `11A — Auditorio FIEC`.
 
-- Identificó 272 especies de flora en 74 familias; 99 arbóreas en 40 familias.
-- Describe al BPP como bosque seco tropical, con cambios de cobertura visual marcados entre época lluviosa y seca.
-- Menciona especies como mango, ceibo, palo santo y nigüito.
+### FIMCP
 
-Fuente: https://www.dspace.espol.edu.ec/bitstream/123456789/56033/1/T-112370%20Castillo_S%C3%A1nchez.pdf
+Fuente oficial: https://www.fimcp.espol.edu.ec/es/infraestructura
 
-**Sostenibilidad ESPOL — Entorno e infraestructura.** Señala al Guayacán, Balsa, Ceibo y Palo Santo entre los árboles presentes y publica métricas institucionales de cobertura forestal del campus.
+- edificio principal con Decanato, coordinaciones, profesores, postgrado y salas;
+- **12I**: Termofluidos en planta baja y Robota/espacios de personal arriba;
+- **12E**: LEMAT, soldadura, metalografía y materiales;
+- **12G**: microbiología, alimentos, biblioteca, sólidos y operaciones unitarias.
+
+### FICT
+
+Fuente oficial: https://www.fict.espol.edu.ec/archive/es/node/17
+
+- **13A** administración;
+- **13B** petrografía, geofísica, fotogeología y topografía;
+- **13D** sanitaria, preparación de minerales y mineralogía;
+- **13E** geotecnia y construcción;
+- **13F** petróleos y fluidos de perforación;
+- **13G** asociación, biblioteca y computación;
+- **13H** aulas, computación, auditorio y lectura.
+
+### FADCOM
+
+Fuente oficial: https://www.fadcom.espol.edu.ec/es/infraestructura
+
+La facultad documenta **14A, 14B, 14C, 3M y 7B**, además de niveles, auditorios, laboratorios y talleres. `14C` contiene comedor/parqueadero, `3M` talleres y `7B` el Motion Lab.
+
+### Biblioteca Central
+
+La documentación institucional identifica el **Centro de Información Bibliotecaria como edificio 7A, frente a Rectorado**.
+
+## Bosque: de “puntos verdes” a estructura ecológica
+
+ESPOL publica para el campus:
+
+- área total: **6.587.827 m²**;
+- vegetación forestal: **5.264.107 m²**, aproximadamente **80 %**;
+- edificaciones: **174.902 m²**, aproximadamente **3 %**;
+- relación de área abierta >**95 %**;
+- vegetación plantada <**10 %**.
 
 Fuente: https://sostenibilidad.espol.edu.ec/entorno-e-infraestructura
 
-### Elevación y cartografía web
+Por eso el bosque no se representa como un puñado de árboles ornamentales. En vista Mapa se usa una **masa forestal continua**; cerca del jugador se sustituyen por instancias 3D ligeras.
 
-- AWS Open Data — Terrain Tiles: https://registry.opendata.aws/terrain-tiles/
-- Tilezen/Joerd — formato Terrarium: https://github.com/tilezen/joerd/blob/master/docs/formats.md
-- MapLibre GL JS — terreno 3D y extrusión de edificios: https://maplibre.org/maplibre-gl-js/docs/examples/3d-terrain/ y https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/
-- OpenFreeMap: https://openfreemap.org/
-- OpenStreetMap contributors: https://www.openstreetmap.org/copyright
+### Calibración con parcelas reales
+
+El estudio `Composición florística y estructura del Bosque y Vegetación Protectora Prosperina` (ESPOL, proyecto 2024; publicado en DSpace en 2025) levantó tres parcelas permanentes. La tesis publica coordenadas UTM y alturas. Para el prototipo se convirtieron de **UTM 17S / EPSG:32717 a WGS84** y se usaron sus centroides:
+
+| Parcela | Altitud | Centro aproximado WGS84 |
+|---|---:|---|
+| Baja | 125 m | -2.144970, -79.973587 |
+| Media | 179 m | -2.147758, -79.973897 |
+| Alta | 226 m | -2.150609, -79.978402 |
+
+Fuente: https://www.dspace.espol.edu.ec/handle/123456789/65962
+
+El trabajo registró **245 individuos arbóreos, 25 especies y 11 familias** en 3000 m² de parcelas arbóreas y concluyó que Fabaceae, Rubiaceae y Bixaceae son especialmente abundantes/frecuentes. También encontró concentración de individuos juveniles en **DAP 5–15 cm**.
+
+El generador usa esas observaciones para que ~64 % de los individuos tengan estructura juvenil y mezcla especies por proximidad a las parcelas. Es una **interpolación visual**, no una afirmación científica de que la composición sea idéntica entre parcelas.
+
+#### Parcela baja — principales IVI
+
+- `Handroanthus chrysanthus` — 34,72 %
+- `Cochlospermum vitifolium` — 31,93 %
+- `Machaerium millei` — 14,07 %
+- `Gliricidia brenningii` — 7,88 %
+- `Centrolobium ochroxylum` — 6,67 %
+
+#### Parcela media — principales IVI
+
+- `Machaerium millei` — 43,88 %
+- `Cochlospermum vitifolium` — 17,22 %
+- `Gliricidia brenningii` — 9,99 %
+- `Simira ecuadorensis` — 9,90 %
+- `Gliricidia sepium` — 6,25 %
+
+#### Parcela alta — principales IVI
+
+- `Ficus insipida` — 32,29 %
+- `Simira ecuadorensis` — 16,68 %
+- `Sorocea sprucei` — 12,01 %
+- `Eugenia concava` — 9,45 %
+- `Neea divaricata` — 8,12 %
+
+### Especies e identidad del bosque seco
+
+ESPOL caracteriza el BVPP como **bosque semideciduo de tierras bajas**. También documenta Guayacán, Balsa, Ceibo y Palo Santo como especies características del campus.
+
+`Los Gigantes del Bosque Seco` identificó **121 especies arbóreas** (más algunos arbustos) en recorridos que cubren el entorno de las facultades y publicó información de distribución/morfología y rutas botánicas.
+
+Fuente: https://www.espol.edu.ec/en/node/9991
+
+Las campañas de restauración del Sendero Mirador han utilizado Ceibo, Laurel, Guayacán, Guachapelí, Cascol, Ébano, Fernán Sánchez, Roble y otras especies. El vivero `Nativo` de ESPOL reproduce Guayacán, Caoba, Laurel y Pechiche, entre otras.
+
+Fuentes:
+
+- https://www.espol.edu.ec/es/noticias/reforestacion-inclusiva-en-el-bosque-protector-de-la-espol
+- https://www.espol.edu.ec/es/noticias/el-bosque-protector-la-prosperina-fue-escenario-del-primer-siembraton-del-ano
+- https://www.espol.edu.ec/es/noticias/en-espol-se-reproducen-especies-de-plantas-nativas-para-guayaquil
+
+## Senderos del BVPP
+
+La documentación institucional y académica confirma, entre otros, los senderos **Mirador**, **Huella Ecológica** y la ruta de avistamiento **Gavilán Dorsigrís**. La versión actual no dibuja recorridos inventados si no dispone de su geometría GIS pública exacta; se conservan los caminos existentes en la cartografía abierta.
+
+Fuente: https://www.dspace.espol.edu.ec/handle/123456789/53740
+
+## Foto aérea
+
+En primera/tercera persona se puede activar una capa `World_Imagery` para que suelo, claros, cubiertas y masa vegetal se lean con mayor fidelidad que un mapa vectorial. Se mantiene apagada en la vista **Mapa** para conservar el aspecto cartográfico solicitado.
+
+La capa se solicita al servicio World Imagery de Esri. La documentación de Esri describe el producto como una compilación mundial de fotografía aérea y satelital y exige atribución a sus proveedores.
+
+Attribution: **Esri, Maxar, Earthstar Geographics y GIS User Community**.
 
 ## Controles
 
 - `W / S`: avanzar / retroceder
 - `A / D`: desplazamiento lateral
-- `Q / E`: girar
-- `Shift`: correr
-- `R`: volver al punto inicial
-- Botón **Mapa**: ver el área completa
-- Botón **Seguir**: activar/desactivar cámara del jugador
+- `Q / E` o flechas izquierda/derecha: girar
+- `Shift` mantenido: sprint ×2,5
+- `R`: reaparecer fuera del Auditorio FIEC
+- `1`: Mapa
+- `2`: Tercera persona
+- `3`: Primera persona
+- En Mapa: rueda + arrastre + controles de navegación
+- En primera persona: arrastre horizontal para mirar; rueda para variar ligeramente la dirección vertical de la mirada
+
+## Arquitectura web
+
+- **MapLibre GL JS 5.24** — mapa, terreno, capas vectoriales y cámaras.
+- **Three.js 0.169** — avatar humano y vegetación 3D cercana mediante `InstancedMesh`.
+- **OpenFreeMap / OpenStreetMap** — cartografía y huellas de edificios.
+- **Mapzen/AWS Terrarium** — elevación.
+- **World Imagery** — fotografía aérea opcional.
+- Sitio completamente estático: no necesita backend para ejecutarse en GitHub Pages.
+
+## Qué es fiel y qué todavía no
+
+### Alto grado de fidelidad
+
+- coordenadas y escala horizontal;
+- elevación del DEM sin exageración vertical;
+- ubicación general de carreteras, edificios y muchos POI derivados de OSM;
+- estructura de áreas forestales vs. núcleo urbano;
+- especies y composición forestal ancladas a investigación ESPOL;
+- bloques/funciones de facultades documentados institucionalmente.
+
+### Aproximado / procedural
+
+- spawn respecto a la **puerta exacta** del Auditorio FIEC;
+- altura de edificios sin `height`/`building:levels` público;
+- fachadas/ventanas/materiales de cada edificio;
+- coordenada de cada árbol individual;
+- interpolación de composición entre las tres parcelas florísticas.
+
+### Próximo salto de fidelidad
+
+Para alcanzar un verdadero **~80 % perceptual** hace falta una capa manual de corrección:
+
+1. capturar fotos/vídeo 360 o recorridos alrededor de los edificios icónicos;
+2. medir/verificar accesos y alturas clave de FIEC, Rectorado, CIB, FIMCP, FADCOM, FICT y zonas deportivas;
+3. exportar correcciones a GeoJSON/JSON;
+4. incorporar mobiliario reconocible: postes, luminarias, señalética, paradas, antenas, cercas, canchas y estacionamientos;
+5. georreferenciar Sendero Mirador/Huella/Gavilán con tracks GPS si la geometría pública no es suficiente.
+
+Ese trabajo debería hacerse en un **Editor ESPOL** dentro del navegador, no modificando código a mano.
 
 ## GitHub Pages
 
-El repositorio incluye `.github/workflows/pages.yml` con despliegue mediante GitHub Actions. Si Pages no está habilitado aún en el repositorio, ve a **Settings → Pages → Source → GitHub Actions** una sola vez. Después cada `push` a `main` vuelve a desplegar automáticamente.
+El repositorio incluye `.github/workflows/pages.yml`. Con **Settings → Pages → Source → GitHub Actions**, cada `push` a `main` vuelve a desplegar el sitio.
 
-## Limitaciones actuales
+## Licencias y atribuciones
 
-1. Es un **prototipo geoespacial jugable**, todavía no una réplica arquitectónica 80 % terminada.
-2. La elevación es un DEM global; para máxima fidelidad habría que reemplazarlo en una futura versión con el levantamiento topográfico institucional de curvas cada 5 m si ESPOL libera el archivo CAD/GIS fuente.
-3. OpenStreetMap no tiene necesariamente todos los edificios, alturas, senderos o antenas del campus.
-4. Los árboles son poblaciones procedurales ecológicamente inspiradas, no ubicaciones censadas.
-5. Los modos Terror/RPG/Shooter son presets visuales/base; todavía no incluyen enemigos, inventario o narrativa.
-
-## Próxima versión recomendada
-
-La v0.2 debería incorporar un **Editor ESPOL** dentro del navegador: dibujar/corregir edificios, senderos, postes, antenas y zonas de vegetación sobre el terreno 3D, guardar cambios en GeoJSON y exportar el master map. Eso permite que el 20 % de trabajo manual se convierta en una corrección visual sobre datos reales, en vez de modelar el campus desde cero.
+- Código propio: ver `LICENSE`.
+- OpenStreetMap: © OpenStreetMap contributors.
+- OpenFreeMap: consultar sus términos/atribución.
+- Terrain Tiles: Mapzen/AWS Open Data y fuentes indicadas por el dataset.
+- World Imagery: © Esri y proveedores indicados en la atribución del servicio.
+- Las publicaciones de ESPOL se usan como **fuentes de investigación/referencia**; el repositorio no redistribuye sus imágenes, planos o PDFs.
