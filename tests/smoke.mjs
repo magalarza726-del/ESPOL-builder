@@ -51,6 +51,23 @@ for (const species of [...TREE_SPECIES, ...UNDERSTORY_SPECIES]) {
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(index, /\.\/src\/app\.js/);
 assert.doesNotMatch(index, /<script[^>]+src="\.\/src\/player3d\.js"/);
+assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_sync\.js"/,
+  'import map must route runtime GameWorld through the building synchronization layer');
+assert.match(index, /v0\.10\.0 · BUILDINGS = MAP/,
+  'visible version should identify the shared building dataset');
+
+const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+assert.ok(app.indexOf("building-sync-preload.js") < app.indexOf("runtime.js"),
+  'building capture must preload before runtime creates MapLibre');
+
+const buildingPreload = fs.readFileSync(new URL('../src/building-sync-preload.js', import.meta.url), 'utf8');
+assert.match(buildingPreload, /querySourceFeatures/);
+assert.match(buildingPreload, /sourceLayer === 'building'/);
+
+const buildingSync = fs.readFileSync(new URL('../src/game3d_sync.js', import.meta.url), 'utf8');
+assert.match(buildingSync, /espol-buildings-synced-3d/);
+assert.match(buildingSync, /ExtrudeGeometry/);
+assert.match(buildingSync, /installExactBuildingCollision/);
 
 const runtime = fs.readFileSync(new URL('../src/runtime.js', import.meta.url), 'utf8');
 assert.doesNotMatch(runtime, /CAMPUS\.sprintMultiplier\s*=/, 'runtime must not mutate global sprint configuration');
