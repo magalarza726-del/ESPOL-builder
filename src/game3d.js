@@ -450,13 +450,16 @@ class GameWorld {
       chunks: 0, vegetation: 0, quality: this.dynamicFactor, colliders: 0
     };
     this.cameraPos = new THREE.Vector3(NaN, NaN, NaN);
+    this.lastResizeW = 0;
+    this.lastResizeH = 0;
+    this.lastPixelRatio = 0;
 
     this.buildTerrain();
     this.buildLake();
     this.buildFlashlight();
     this.bindModeInput();
-    this.resize();
-    window.addEventListener('resize', () => this.resize());
+    this.resize(true);
+    window.addEventListener('resize', () => this.resize(true));
   }
 
   bindModeInput() {
@@ -483,15 +486,21 @@ class GameWorld {
   currentGameMode() {
     return document.querySelector('#gameMode')?.value || 'explore';
   }
-  resize() {
+
+  resize(force = false) {
     const w = Math.max(1, this.canvas.clientWidth || innerWidth);
     const h = Math.max(1, this.canvas.clientHeight || innerHeight);
+    const ratio = Math.max(.52, Math.min(1, (window.devicePixelRatio || 1) * this.dynamicFactor));
+    if (!force && w === this.lastResizeW && h === this.lastResizeH && Math.abs(ratio - this.lastPixelRatio) < .001) return;
+    this.lastResizeW = w;
+    this.lastResizeH = h;
+    this.lastPixelRatio = ratio;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    const ratio = Math.max(.52, Math.min(1, (window.devicePixelRatio || 1) * this.dynamicFactor));
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(w, h, false);
   }
+
   resetCamera() {
     this.cameraPos.set(NaN, NaN, NaN);
   }
@@ -565,28 +574,29 @@ class GameWorld {
   }
 
   buildFlashlight() {
+    // Volumen sin tapa frontal: evita la gran elipse/disco que aparecía flotando.
     this.flashGroup = new THREE.Group();
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(.13, 4.3, 20, 12, 1, true),
-      flatMat(0xfff4c7, {
-        transparent: true, opacity: .18, depthWrite: false,
+    const outer = new THREE.Mesh(
+      new THREE.CylinderGeometry(.06, 2.55, 18, 10, 1, true),
+      flatMat(0xfff3c0, {
+        transparent: true, opacity: .045, depthWrite: false,
         blending: THREE.AdditiveBlending, double: true
       })
     );
-    this.flashGroup.add(beam);
-    this.flashBeam = beam;
-
-    const pool = new THREE.Mesh(
-      new THREE.CircleGeometry(3.25, 18),
-      flatMat(0xfff3bd, {
-        transparent: true, opacity: .34, depthWrite: false,
+    const inner = new THREE.Mesh(
+      new THREE.CylinderGeometry(.045, 1.15, 13, 9, 1, true),
+      flatMat(0xffffdc, {
+        transparent: true, opacity: .075, depthWrite: false,
         blending: THREE.AdditiveBlending, double: true
       })
     );
-    this.flashPool = pool;
-    this.scene.add(this.flashGroup, pool);
+    outer.renderOrder = 20;
+    inner.renderOrder = 21;
+    this.flashGroup.add(outer, inner);
+    this.flashOuter = outer;
+    this.flashInner = inner;
+    this.scene.add(this.flashGroup);
     this.flashGroup.visible = false;
-    pool.visible = false;
   }
 
   setStructures({ buildings = [], roads = [] } = {}) {
@@ -645,15 +655,30 @@ class GameWorld {
   }
 
   setMode(mode) {
+    if (this.mode === mode) return;
     this.mode = mode;
     this.agent.visible = mode === 'follow';
     this.forceRefresh = true;
     this.resetCamera();
   }
-  setSeason(v) { this.season = v; this.forceRefresh = true; }
-  setTreesEnabled(v) { this.treesEnabled = v; this.forceRefresh = true; }
-  setBuildingsEnabled(v) { this.buildingsEnabled = v; this.buildingGroup.visible = v; }
-  setTerrainEnabled(v) { this.terrainEnabled = v; this.terrainGroup.visible = v; }
+  setSeason(v) {
+    if (Math.abs(v - this.season) < .001) return;
+    this.season = v;
+    this.forceRefresh = true;
+  }
+  setTreesEnabled(v) {
+    if (v === this.treesEnabled) return;
+    this.treesEnabled = v;
+    this.forceRefresh = true;
+  }
+  setBuildingsEnabled(v) {
+    this.buildingsEnabled = v;
+    this.buildingGroup.visible = v;
+  }
+  setTerrainEnabled(v) {
+    this.terrainEnabled = v;
+    this.terrainGroup.visible = v;
+  }
 
   instance(mesh, index, x, y, z, sx, sy, sz, color, quat = this.identityQ) {
     this.tmpP.set(x, y, z);
@@ -662,6 +687,7 @@ class GameWorld {
     mesh.setMatrixAt(index, this.tmpM);
     if (color) mesh.setColorAt(index, color);
   }
+
   clearVegetation() {
     this.veg.canopyMass.count = this.veg.trunk.count = 0;
     for (const m of Object.values(this.veg.canopies)) m.count = 0;
@@ -671,8 +697,8 @@ class GameWorld {
 
   refreshVegetation(x, z, now) {
     const moved = Math.hypot(x - this.lastVX, z - this.lastVZ);
-    const refreshMs = (this.base.refreshMs || 620) / Math.max(.6, this.dynamicFactor);
-    const refreshMove = this.base.refreshMoveM || 18;
+    const refreshMs = (this.base.refreshMs || 680) / Math.max(.6, this.dynamicFactor);
+    const refreshMove = this.base.refreshMoveM || 22;
     if (!this.forceRefresh && now - this.lastRefresh < refreshMs && moved < refreshMove) return;
 
     this.forceRefresh = false;
@@ -684,13 +710,13 @@ class GameWorld {
       return;
     }
 
-    const treeR = (this.base.treeRadiusM || 105) * (.76 + .24 * this.dynamicFactor);
-    const underR = (this.base.understoryRadiusM || 78) * (.74 + .26 * this.dynamicFactor);
-    const massR = (this.base.canopyMassRadiusM || 620) * (.82 + .18 * this.dynamicFactor);
+    const treeR = (this.base.treeRadiusM || 125) * (.76 + .24 * this.dynamicFactor);
+    const underR = (this.base.understoryRadiusM || 92) * (.74 + .26 * this.dynamicFactor);
+    const massR = (this.base.canopyMassRadiusM || 700) * (.82 + .18 * this.dynamicFactor);
     const rows = queryGrid(this.index, x, z, massR);
     const budget = {
-      tree: Math.max(260, Math.floor(this.capacity.trees * this.dynamicFactor)),
-      mass: Math.max(180, Math.floor(this.capacity.mass * this.dynamicFactor)),
+      tree: Math.max(420, Math.floor(this.capacity.trees * this.dynamicFactor)),
+      mass: Math.max(220, Math.floor(this.capacity.mass * this.dynamicFactor)),
       shrub: Math.floor(this.capacity.shrubs * this.dynamicFactor),
       herb: Math.floor(this.capacity.herbs * this.dynamicFactor),
       vine: Math.floor(this.capacity.vines * this.dynamicFactor),
@@ -704,14 +730,17 @@ class GameWorld {
     for (const [d2, f] of rows) {
       const p = f.properties, h = p.habit || 'tree';
       if (h === 'tree') {
-        if (d2 <= tree2) treeRows.push([d2, f]);
-        else if (massN < budget.mass) {
+        if (d2 <= tree2) {
+          treeRows.push([d2, f]);
+        } else if (massN < budget.mass) {
           const y = this.getElevation(f.geometry.coordinates[0], f.geometry.coordinates[1]) - this.originElev;
           const hgt = Math.max(4, +p.height || 7), can = Math.max(2, +p.canopyM || 3);
           const cl = Math.max(5, +p.clusterSize || 10);
-          const scale = can * (1.7 + Math.min(2.2, Math.sqrt(cl) * .32));
-          this.instance(this.veg.canopyMass, massN++, p._x, y + hgt * .68, p._z,
-            scale, scale * .48, scale, treeColor(p, this.season));
+          const scale = can * (1.45 + Math.min(2.75, Math.sqrt(cl) * .30));
+          this.instance(
+            this.veg.canopyMass, massN++, p._x, y + hgt * .68, p._z,
+            scale, scale * .48, scale, treeColor(p, this.season)
+          );
         }
       } else if (d2 <= under2 && under[h] && under[h].length < budget[h]) {
         under[h].push([d2, f]);
@@ -724,10 +753,11 @@ class GameWorld {
 
     let ti = 0;
     const ci = { round: 0, umbrella: 0, open: 0, ceibo: 0 };
+    const renderMax = VEGETATION_PROFILE.cluster.renderMax || 66;
     for (const [, f] of treeRows) {
       const p = f.properties, [lng, lat] = f.geometry.coordinates;
       const baseY = this.getElevation(lng, lat) - this.originElev;
-      const copies = Math.max(1, Math.min(+p.clusterSize || 1, 22));
+      const copies = Math.max(1, Math.min(+p.clusterSize || 1, renderMax));
       for (let j = 0; j < copies && ti < budget.tree; j++) {
         const off = clusterOffset(p, j);
         const jitter = .78 + hash01((+p.id || 1) * 71 + j * 13) * .46;
@@ -769,12 +799,12 @@ class GameWorld {
         const [lng, lat] = f.geometry.coordinates;
         const y = this.getElevation(lng, lat) - this.originElev;
         const s = Math.max(.22, +p.scale || .6);
-        const copies = Math.min(+p.density || 1, habit === 'herb' ? 5 : habit === 'shrub' ? 3 : 2);
+        const copies = Math.min(+p.density || 1, habit === 'herb' ? 7 : habit === 'shrub' ? 4 : 3);
         for (let j = 0; j < copies && n < cap; j++) {
           const a = (+p.rand || .5) * 6.283 + j * 2.1;
-          const sp = habit === 'herb' ? 1.35 : .72;
-          const xx = p._x + Math.cos(a) * sp * j * .45;
-          const zz = p._z + Math.sin(a) * sp * j * .45;
+          const sp = habit === 'herb' ? 1.15 : .65;
+          const xx = p._x + Math.cos(a) * sp * j * .42;
+          const zz = p._z + Math.sin(a) * sp * j * .42;
           let sx = s, sy = s, sz = s;
           if (habit === 'herb') {
             if (p.form === 'grass') { sx = .22 * s; sy = 1.45 * s; sz = .22 * s; }
@@ -788,8 +818,10 @@ class GameWorld {
           } else {
             sx = 1.05 * s; sy = .82 * s; sz = 1.05 * s;
           }
-          this.instance(mesh, n++, xx, y + (habit === 'epiphyte' ? .8 : 0), zz,
-            sx, sy, sz, understoryColor(p, this.season));
+          this.instance(
+            mesh, n++, xx, y + (habit === 'epiphyte' ? .8 : 0), zz,
+            sx, sy, sz, understoryColor(p, this.season)
+          );
         }
       }
       mesh.count = n;
@@ -843,10 +875,11 @@ class GameWorld {
     const mx = (a.x + b.x) * .5, mz = (a.z + b.z) * .5;
     const half = Math.hypot(b.x - a.x, b.z - a.z) * .5;
     const rows = queryGrid(this.index, mx, mz, half + 15);
+    const collisionMax = VEGETATION_PROFILE.cluster.collisionMax || 32;
     for (const [, f] of rows) {
       const p = f.properties;
       if ((p.habit || 'tree') !== 'tree') continue;
-      const copies = Math.max(1, Math.min(+p.clusterSize || 1, 22));
+      const copies = Math.max(1, Math.min(+p.clusterSize || 1, collisionMax));
       for (let j = 0; j < copies; j++) {
         const o = clusterOffset(p, j);
         const tx = p._x + o.x, tz = p._z + o.z;
@@ -921,9 +954,7 @@ class GameWorld {
 
   applyGameModeVisuals(mode) {
     if (this.lastGameMode === mode) {
-      const on = mode === 'horror' && this.flashlightOn;
-      this.flashGroup.visible = on;
-      this.flashPool.visible = on;
+      this.flashGroup.visible = mode === 'horror' && this.flashlightOn;
       return;
     }
     this.lastGameMode = mode;
@@ -934,35 +965,30 @@ class GameWorld {
     if (this.materials.terrain) this.materials.terrain.color.setScalar(factor);
     if (this.materials.building) this.materials.building.color.set(horror ? 0x141718 : 0xbfc3bc);
     if (this.materials.road) this.materials.road.color.set(horror ? 0x0d0f10 : 0x686c69);
-    for (const v of this.materials.vegetation) v.m.color.copy(v.base).multiplyScalar(factor);
+    for (const item of this.materials.vegetation) item.m.color.copy(item.base).multiplyScalar(factor);
 
     const rig = this.agent.userData.rig;
     rig.pistol.visible = mode === 'shooter';
     rig.jetpack.visible = mode === 'rpg';
     this.fpWeapon.visible = mode === 'shooter' && this.mode === 'firstperson';
-
-    const on = horror && this.flashlightOn;
-    this.flashGroup.visible = on;
-    this.flashPool.visible = on;
+    this.flashGroup.visible = horror && this.flashlightOn;
     this.forceRefresh = true;
   }
 
   updateFlashlight(mode) {
     const on = mode === 'horror' && this.flashlightOn;
     this.flashGroup.visible = on;
-    this.flashPool.visible = on;
     if (!on) return;
 
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir).normalize();
-    const origin = this.camera.position.clone().addScaledVector(dir, .35);
-    origin.y -= .10;
+    const origin = this.camera.position.clone().addScaledVector(dir, .30);
+    origin.y -= .08;
 
-    this.flashBeam.position.copy(origin.clone().addScaledVector(dir, 10));
-    this.flashBeam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-
-    this.flashPool.position.copy(origin.clone().addScaledVector(dir, 20));
-    this.flashPool.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+    this.flashOuter.position.copy(origin.clone().addScaledVector(dir, 9.0));
+    this.flashOuter.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    this.flashInner.position.copy(origin.clone().addScaledVector(dir, 6.5));
+    this.flashInner.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
   }
 
   animateAgent(mode, player, dt) {
@@ -1018,7 +1044,7 @@ class GameWorld {
       this.dynamicFactor = next;
       this.stats.quality = next;
       this.forceRefresh = true;
-      this.resize();
+      this.resize(true);
     }
     this.perfTime = 0;
     this.perfFrames = 0;
