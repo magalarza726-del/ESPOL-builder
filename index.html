@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Plantilla jugable 1:1 de ESPOL con edificios sincronizados entre Mapa y mundo 3D, bosque de alta densidad estable, Rectorado 6A detallado, colisiones y modos jugables." />
+  <meta name="description" content="Plantilla jugable 1:1 de ESPOL con edificios sincronizados, bosque continuo con colisiones visibles, terreno físico unificado y Rectorado 6A detallado." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="./assets/styles.css" />
-  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","./src/game3d.js":"./src/game3d_v011.js"}}</script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","./src/game3d.js":"./src/game3d_v012.js"}}</script>
 </head>
 <body class="game-mode">
   <div id="map" aria-label="Mapa GIS de ESPOL"></div>
@@ -22,12 +22,12 @@
     <div class="loader-card">
       <div class="loader-mark">EB</div><h1>ESPOL Builder</h1>
       <p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div>
-      <small>Terreno 1:1 · edificios Mapa=3D · bosque ×6 estable · Rectorado 6A · colisiones</small>
+      <small>Terreno físico=visual · edificios Mapa=3D · bosque LOD continuo · Rectorado 6A</small>
     </div>
   </div>
 
   <header class="topbar glass">
-    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.11.0 · FOREST STABLE · RECTORADO 6A</span></div>
+    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.12.0 · ENGINE STABILITY · RECTORADO 6A</span></div>
     <div class="top-actions">
       <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
       <button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button>
@@ -57,9 +57,9 @@
   <aside class="panel glass" id="panel">
     <div class="panel-head"><div><small>CAPAS DEL MUNDO</small><h2>Campus Gustavo Galindo</h2></div><button id="panelToggle" aria-label="Ocultar panel">×</button></div>
     <div class="control-row">
-      <label><input id="terrainToggle" type="checkbox" checked> Relieve real · precalculado</label>
+      <label><input id="terrainToggle" type="checkbox" checked> Relieve real · física unificada</label>
       <label><input id="buildingsToggle" type="checkbox" checked> Edificios sincronizados Mapa ↔ 3D</label>
-      <label><input id="treesToggle" type="checkbox" checked> Bosque + sotobosque · densidad ×6 LOD estable</label>
+      <label><input id="treesToggle" type="checkbox" checked> Bosque ×6 · LOD continuo + colisión visible</label>
       <label><input id="imageryToggle" type="checkbox"> Foto aérea sólo en Mapa GIS</label>
       <label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label>
       <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label>
@@ -70,10 +70,10 @@
 
     <div class="fact-strip"><div><b>73%</b><span>juveniles en DAP bajo</span></div><div><b>80%</b><span>campus forestal</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
 
-    <details open><summary>Qué cambió en v0.11</summary><p class="fineprint">Se corrige el hueco de LOD que hacía desaparecer árboles al entrar en rango cercano: el disco de árboles detallados ahora cabe dentro del presupuesto de instancias y el refresco se anticipa al desplazamiento. Rectorado 6A recibe un modelo específico anclado a su huella cartográfica, con fachada acristalada, columnas, marquesinas, volumen superior, señalética 6A/ESPOL, jardinería, tortuga, monumento del sello, busto, luminarias, mástil y la instalación fotovoltaica de 180 módulos documentada por ESPOL.</p></details>
+    <details open><summary>Qué cambió en v0.12</summary><p class="fineprint">Refactor profundo de estabilidad: se desactiva el frustum culling incorrecto de InstancedMesh dinámicos; el LOD de árboles ahora tiene una franja de solapamiento y conserva una masa de respaldo cuando se agota el presupuesto de detalle; sólo los troncos realmente visibles generan colisión; el bosque lejano incorpora troncos simplificados; y la altura del personaje, edificios y vegetación se obtiene de la misma superficie triangular que se dibuja, evitando atravesar el relieve. Rectorado 6A amplía su fachada, acceso, puertas, mullions, clerestorio inclinado, jardinería, vialidad frontal, monumento, tortuga, mástil y detalles laterales.</p></details>
     <details><summary>Vegetación investigada</summary><p class="fineprint">La estructura arbórea se calibra con parcelas baja, media y alta de ESPOL; el sotobosque incorpora arbustos, herbáceas, trepadoras y epífitas.</p><div id="speciesList" class="species-list"></div></details>
     <details><summary>Edificios documentados</summary><div id="buildingList" class="building-list"></div></details>
-    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera y tercera persona usan Three.js y comparten huellas del mismo barrido GIS. Rectorado conserva la masa sincronizada como base y superpone detalle optimizado, evitando sustituir su posición o contorno real por una caja inventada.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a></details>
+    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera y tercera persona usan Three.js y comparten huellas del mismo barrido GIS. La capa física de terreno se interpola sobre exactamente los mismos triángulos del Landscape visible; el bosque usa instancing y LOD espacial sin colliders invisibles.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a></details>
   </aside>
 
   <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
