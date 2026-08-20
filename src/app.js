@@ -1,6 +1,6 @@
-// Compatibility entrypoint for cached GitHub Pages HTML.
-// The application now lives in runtime.js.
-import './runtime.js';
+// Compatibility entrypoint for GitHub Pages.
+// v0.10 preloads the MapLibre building capture BEFORE runtime.js creates the map.
+await import('./building-sync-preload.js');
 
 // GameWorld keeps a small set of global input listeners for jump/jetpack.
 // Stop gameplay-only keys during GIS map mode so returning to the game cannot
@@ -10,3 +10,5 @@ document.addEventListener('keydown', event => {
     event.stopImmediatePropagation();
   }
 }, true);
+
+await import('./runtime.js');
