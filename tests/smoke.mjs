@@ -5,6 +5,8 @@ import { VEGETATION_PROFILE, UNDERSTORY_SPECIES } from '../src/vegetation.js';
 import { GAME_MODES, getModeConfig } from '../src/modes.js';
 import { haversine, insideBounds, normBearing, offsetLngLat } from '../src/core.js';
 
+await import('../src/spawn-fimcp-v015.js');
+
 const finite = value => Number.isFinite(Number(value));
 
 assert.ok(CAMPUS.bounds.west < CAMPUS.bounds.east, 'campus longitude bounds must be ordered');
@@ -12,6 +14,7 @@ assert.ok(CAMPUS.bounds.south < CAMPUS.bounds.north, 'campus latitude bounds mus
 assert.ok(insideBounds(CAMPUS.spawn.lng, CAMPUS.spawn.lat, CAMPUS.bounds), 'spawn must be inside campus bounds');
 assert.ok(CAMPUS.playerRadiusM > 0 && CAMPUS.playerRadiusM < 2, 'player radius should remain human-scale');
 assert.ok(CAMPUS.jogSpeedMps > 0, 'base movement speed must be positive');
+assert.equal(CAMPUS.spawnName, 'Parqueadero frontal FIMCP');
 
 const ids = new Set();
 for (const landmark of LANDMARKS) {
@@ -20,7 +23,9 @@ for (const landmark of LANDMARKS) {
   assert.ok(insideBounds(landmark.lng, landmark.lat, CAMPUS.bounds), `landmark must be in ESPOL bounds: ${landmark.id}`);
 }
 assert.ok(ids.has('rectorado'), 'Rectorado landmark is required');
-assert.ok(ids.has('aud-fiec'), 'FIEC auditorium landmark is required by the vertical slice');
+assert.ok(ids.has('aud-fiec'), 'FIEC auditorium landmark is required by the regression baseline');
+assert.ok(ids.has('aud-fimcp'), 'FIMCP auditorium landmark is required');
+assert.ok(ids.has('fimcp-parking'), 'FIMCP parking respawn landmark is required');
 
 assert.equal(getModeConfig('explore').sprintMultiplier, 5, 'exploration sprint is ×5');
 for (const [id, mode] of Object.entries(GAME_MODES)) {
@@ -49,10 +54,12 @@ const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8')
 assert.match(index, /\.\/src\/app\.js/);
 assert.doesNotMatch(index, /<script[^>]+src="\.\/src\/player3d\.js"/);
 assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v014\.js"/,
-  'import map must route runtime through the v0.14 world composer');
-assert.match(index, /v0\.14\.0 · FOUNDATION HARDENING · FIEC VERTICAL SLICE/);
+  'import map must route runtime through the hardened v0.14 composer carrying v0.15 FIMCP reconstruction');
+assert.match(index, /v0\.15\.0 · FIMCP PHOTO SURVEY · 100 VISTAS/);
+assert.match(index, /reaparecer FIMCP/);
 
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+assert.ok(app.indexOf('spawn-fimcp-v015.js') < app.indexOf('project-foundation.js'));
 assert.ok(app.indexOf('project-foundation.js') < app.indexOf('building-sync-preload.js'));
 assert.ok(app.indexOf('building-sync-preload.js') < app.indexOf('runtime.js'));
 
@@ -70,8 +77,23 @@ assert.match(composer13, /installTerrainSurface/);
 assert.match(composer13, /installForestSystemV2/);
 assert.match(composer13, /installRectoradoV012/);
 const composer14 = fs.readFileSync(new URL('../src/game3d_v014.js', import.meta.url), 'utf8');
+assert.match(composer14, /installFIMCPPhotoReconstruction/);
 assert.match(composer14, /auditFoundation/);
 assert.match(composer14, /foundationReport/);
+
+const survey = fs.readFileSync(new URL('../src/fimcp-photo-survey.js', import.meta.url), 'utf8');
+assert.match(survey, /photoCount: 100/);
+assert.match(survey, /auditorium-front/);
+assert.match(survey, /lemat-front/);
+assert.match(survey, /central-courtyard/);
+assert.match(survey, /external-avenue/);
+
+const detail = fs.readFileSync(new URL('../src/fimcp-detail-v015.js', import.meta.url), 'utf8');
+assert.match(detail, /FIMCP-photo-reconstruction-v015/);
+assert.match(detail, /FIMCP - AUDITORIUM/);
+assert.match(detail, /LEMAT/);
+assert.match(detail, /ESTACION GBP/);
+assert.doesNotMatch(detail, /new THREE\.TextureLoader/);
 
 const terrainSurface = fs.readFileSync(new URL('../src/terrain-surface-v012.js', import.meta.url), 'utf8');
 assert.match(terrainSurface, /tx \+ tz <= 1/,
@@ -110,4 +132,4 @@ for (const obsolete of ['src/forest-runtime-v012.js', 'src/game3d_v012.js']) {
   assert.equal(fs.existsSync(new URL(`../${obsolete}`, import.meta.url)), false, `${obsolete} should remain removed`);
 }
 
-console.log('ESPOL Builder smoke tests: OK');
+console.log('ESPOL Builder v0.15 smoke tests: OK');
