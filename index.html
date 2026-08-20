@@ -22,12 +22,12 @@
     <div class="loader-card">
       <div class="loader-mark">EB</div><h1>ESPOL Builder</h1>
       <p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div>
-      <small>Terreno 1:1 · bosque ×6 efectivo · edificios · colisiones · gameplay por modo</small>
+      <small>Terreno 1:1 · bosque ×6 efectivo · runtime estable · colisiones · gameplay por modo</small>
     </div>
   </div>
 
   <header class="topbar glass">
-    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.8.1 · FOREST ×6 · FLASHLIGHT</span></div>
+    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.9.0 · STABILITY REFACTOR</span></div>
     <div class="top-actions">
       <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
       <button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button>
@@ -70,10 +70,10 @@
 
     <div class="fact-strip"><div><b>73%</b><span>juveniles en DAP bajo</span></div><div><b>80%</b><span>campus forestal</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
 
-    <details open><summary>Qué cambió en v0.8.1</summary><p class="fineprint">La linterna deja de usar un disco terminal que se veía como una burbuja gigante: ahora es un haz frontal abierto y estrecho que sigue exactamente la cámara. Exploración reduce Shift de ×10 a ×5. El bosque aumenta +500% de densidad efectiva frente a v0.8 mediante más anclas y grupos naturales más densos, pero conserva instancing, auto-LOD y límites de geometría simultánea para mantener la fluidez.</p></details>
+    <details open><summary>Qué cambió en v0.9</summary><p class="fineprint">Refactor de estabilidad: una sola fuente de verdad para modos y velocidades, movimiento bloqueado correctamente en Mapa, limpieza de teclas al cambiar de vista o perder foco, controles de cámara mediante Pointer Events, deduplicación de carreteras, limpieza de listeners temporales del barrido GIS y validaciones automáticas antes de publicar en GitHub Pages.</p></details>
     <details><summary>Vegetación investigada</summary><p class="fineprint">La estructura arbórea se calibra con parcelas baja, media y alta de ESPOL; el sotobosque incorpora arbustos, herbáceas, trepadoras y epífitas.</p><div id="speciesList" class="species-list"></div></details>
     <details><summary>Edificios documentados</summary><div id="buildingList" class="building-list"></div></details>
-    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera y tercera persona usan Three.js con DEM en memoria, geometría instanciada, LOD y resolución adaptativa. v0.8.1 evita reconstruir vegetación y redimensionar WebGL en cada frame.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a></details>
+    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera y tercera persona usan Three.js con DEM en memoria, geometría instanciada, LOD y resolución adaptativa. El runtime v0.9 separa utilidades, configuración de modos, orquestación y motor 3D para reducir regresiones.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a></details>
   </aside>
 
   <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
@@ -83,6 +83,5 @@
 
   <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
   <script type="module" src="./src/app.js"></script>
-  <script type="module" src="./src/gameplay.js"></script>
 </body>
 </html>
