@@ -1,26 +1,32 @@
+const harness = config => Object.freeze({
+  role: 'test-harness',
+  affectsWorldData: false,
+  ...config
+});
+
 export const GAME_MODES = Object.freeze({
-  explore: Object.freeze({
+  explore: harness({
     id: 'explore',
     label: 'Exploración',
     sprintMultiplier: 5,
     bodyClass: null,
     hint: 'Exploración: Espacio = saltar · Shift = velocidad ×5'
   }),
-  horror: Object.freeze({
+  horror: harness({
     id: 'horror',
     label: 'Terror nocturno',
     sprintMultiplier: 2.5,
     bodyClass: 'mode-horror',
     hint: 'Terror: linterna frontal · F = encender/apagar'
   }),
-  rpg: Object.freeze({
+  rpg: harness({
     id: 'rpg',
     label: 'RPG',
     sprintMultiplier: 2.5,
     bodyClass: 'mode-rpg',
     hint: 'RPG: mantén Espacio = jetpack · suelta para descender'
   }),
-  shooter: Object.freeze({
+  shooter: harness({
     id: 'shooter',
     label: 'Shooter sandbox',
     sprintMultiplier: 2.5,
