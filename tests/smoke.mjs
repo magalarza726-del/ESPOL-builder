@@ -19,7 +19,8 @@ for (const landmark of LANDMARKS) {
   ids.add(landmark.id);
   assert.ok(insideBounds(landmark.lng, landmark.lat, CAMPUS.bounds), `landmark must be in ESPOL bounds: ${landmark.id}`);
 }
-assert.ok(ids.has('rectorado'), 'Rectorado landmark is required by the detailed 6A model');
+assert.ok(ids.has('rectorado'), 'Rectorado landmark is required');
+assert.ok(ids.has('aud-fiec'), 'FIEC auditorium landmark is required by the vertical slice');
 
 assert.equal(getModeConfig('explore').sprintMultiplier, 5, 'exploration sprint is ×5');
 for (const [id, mode] of Object.entries(GAME_MODES)) {
@@ -41,20 +42,19 @@ assert.ok(VEGETATION_PROFILE.cluster.naturalMin <= VEGETATION_PROFILE.cluster.na
 assert.ok(TREE_SPECIES.length >= 10, 'tree catalogue unexpectedly small');
 assert.ok(UNDERSTORY_SPECIES.length >= 10, 'understory catalogue unexpectedly small');
 for (const species of [...TREE_SPECIES, ...UNDERSTORY_SPECIES]) {
-  assert.ok(species.name && species.scientific, 'species entries need common/display and scientific names');
+  assert.ok(species.name && species.scientific, 'species entries need display and scientific names');
 }
 
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(index, /\.\/src\/app\.js/);
 assert.doesNotMatch(index, /<script[^>]+src="\.\/src\/player3d\.js"/);
-assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v013\.js"/,
-  'import map must route runtime through the v0.13 world composer');
-assert.match(index, /v0\.13\.0 · FOREST SYSTEM V2 · STABILITY/,
-  'visible version should identify Forest System V2');
+assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v014\.js"/,
+  'import map must route runtime through the v0.14 world composer');
+assert.match(index, /v0\.14\.0 · FOUNDATION HARDENING · FIEC VERTICAL SLICE/);
 
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
-assert.ok(app.indexOf("building-sync-preload.js") < app.indexOf("runtime.js"),
-  'building capture must preload before runtime creates MapLibre');
+assert.ok(app.indexOf('project-foundation.js') < app.indexOf('building-sync-preload.js'));
+assert.ok(app.indexOf('building-sync-preload.js') < app.indexOf('runtime.js'));
 
 const buildingPreload = fs.readFileSync(new URL('../src/building-sync-preload.js', import.meta.url), 'utf8');
 assert.match(buildingPreload, /querySourceFeatures/);
@@ -65,10 +65,13 @@ assert.match(buildingSync, /espol-buildings-synced-3d/);
 assert.match(buildingSync, /ExtrudeGeometry/);
 assert.match(buildingSync, /installExactBuildingCollision/);
 
-const composer = fs.readFileSync(new URL('../src/game3d_v013.js', import.meta.url), 'utf8');
-assert.match(composer, /installTerrainSurface/);
-assert.match(composer, /installForestSystemV2/);
-assert.match(composer, /installRectoradoV012/);
+const composer13 = fs.readFileSync(new URL('../src/game3d_v013.js', import.meta.url), 'utf8');
+assert.match(composer13, /installTerrainSurface/);
+assert.match(composer13, /installForestSystemV2/);
+assert.match(composer13, /installRectoradoV012/);
+const composer14 = fs.readFileSync(new URL('../src/game3d_v014.js', import.meta.url), 'utf8');
+assert.match(composer14, /auditFoundation/);
+assert.match(composer14, /foundationReport/);
 
 const terrainSurface = fs.readFileSync(new URL('../src/terrain-surface-v012.js', import.meta.url), 'utf8');
 assert.match(terrainSurface, /tx \+ tz <= 1/,
@@ -77,21 +80,15 @@ assert.match(terrainSurface, /world\.getElevation = surfaceElevation/,
   'all runtime height consumers should use the rendered surface');
 
 const forestV2 = fs.readFileSync(new URL('../src/forest-system-v2.js', import.meta.url), 'utf8');
-assert.match(forestV2, /const CHUNK_M = 64/,
-  'Forest V2 must use stable 64 m chunks');
-assert.match(forestV2, /class ForestDatabase/,
-  'Forest V2 needs a persistent deterministic data layer');
-assert.match(forestV2, /treeCache/,
-  'Forest V2 should cache generated chunk records');
+assert.match(forestV2, /const CHUNK_M = 64/, 'Forest V2 must use stable 64 m chunks');
+assert.match(forestV2, /class ForestDatabase/);
+assert.match(forestV2, /treeCache/);
 assert.match(forestV2, /DETAIL_IN_M/);
-assert.match(forestV2, /DETAIL_OUT_M/,
-  'Forest V2 needs hysteresis between entering and leaving detailed LOD');
-assert.match(forestV2, /activeTreeColliderGrid/,
-  'tree physics must be derived from current detailed tree records');
-assert.match(forestV2, /forest-v2-trunks/,
-  'distant forest must retain representative trunks');
-assert.match(forestV2, /frustumCulled = false/,
-  'dynamic instanced vegetation must not use stale frustum bounds');
+assert.match(forestV2, /DETAIL_OUT_M/);
+assert.match(forestV2, /activeTreeColliderGrid/);
+assert.match(forestV2, /forest-v2-trunks/);
+assert.match(forestV2, /frustumCulled = false/);
+assert.doesNotMatch(forestV2, /Math\.random\(/, 'Forest V2 must remain deterministic');
 
 const rectorado = fs.readFileSync(new URL('../src/rectorado-detail.js', import.meta.url), 'utf8');
 assert.match(rectorado, /Rectorado-6A-detail/);
@@ -108,5 +105,9 @@ assert.match(rectoradoV012, /addFlowerDetail/);
 const runtime = fs.readFileSync(new URL('../src/runtime.js', import.meta.url), 'utf8');
 assert.doesNotMatch(runtime, /CAMPUS\.sprintMultiplier\s*=/, 'runtime must not mutate global sprint configuration');
 assert.match(runtime, /state\.cameraMode === 'map'/, 'runtime should explicitly gate gameplay in map mode');
+
+for (const obsolete of ['src/forest-runtime-v012.js', 'src/game3d_v012.js']) {
+  assert.equal(fs.existsSync(new URL(`../${obsolete}`, import.meta.url)), false, `${obsolete} should remain removed`);
+}
 
 console.log('ESPOL Builder smoke tests: OK');
