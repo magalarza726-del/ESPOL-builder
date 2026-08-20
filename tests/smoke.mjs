@@ -52,10 +52,10 @@ for (const species of [...TREE_SPECIES, ...UNDERSTORY_SPECIES]) {
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(index, /\.\/src\/app\.js/);
 assert.doesNotMatch(index, /<script[^>]+src="\.\/src\/player3d\.js"/);
-assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v011\.js"/,
-  'import map must route runtime through the v0.11 world composer');
-assert.match(index, /v0\.11\.0 · FOREST STABLE · RECTORADO 6A/,
-  'visible version should identify forest continuity and Rectorado detail');
+assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v012\.js"/,
+  'import map must route runtime through the v0.12 world composer');
+assert.match(index, /v0\.12\.0 · ENGINE STABILITY · RECTORADO 6A/,
+  'visible version should identify the stability refactor');
 
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 assert.ok(app.indexOf("building-sync-preload.js") < app.indexOf("runtime.js"),
@@ -70,21 +70,38 @@ assert.match(buildingSync, /espol-buildings-synced-3d/);
 assert.match(buildingSync, /ExtrudeGeometry/);
 assert.match(buildingSync, /installExactBuildingCollision/);
 
-const composer = fs.readFileSync(new URL('../src/game3d_v011.js', import.meta.url), 'utf8');
-assert.match(composer, /stabilizeForestLOD/);
-assert.match(composer, /installRectoradoDetail/);
+const composer = fs.readFileSync(new URL('../src/game3d_v012.js', import.meta.url), 'utf8');
+assert.match(composer, /installTerrainSurface/);
+assert.match(composer, /installForestRuntime/);
+assert.match(composer, /installRectoradoV012/);
 
-const forestStability = fs.readFileSync(new URL('../src/forest-stability.js', import.meta.url), 'utf8');
-assert.match(forestStability, /treeRadiusM/);
-assert.match(forestStability, /52/);
-assert.match(forestStability, /refreshMoveM/);
+const terrainSurface = fs.readFileSync(new URL('../src/terrain-surface-v012.js', import.meta.url), 'utf8');
+assert.match(terrainSurface, /tx \+ tz <= 1/,
+  'surface sampler must match the terrain triangle split');
+assert.match(terrainSurface, /world\.getElevation = surfaceElevation/,
+  'all runtime height consumers should use the rendered surface');
+
+const forestRuntime = fs.readFileSync(new URL('../src/forest-runtime-v012.js', import.meta.url), 'utf8');
+assert.match(forestRuntime, /frustumCulled = false/,
+  'dynamic vegetation instances should not use stale frustum bounds');
+assert.match(forestRuntime, /transitionMass/,
+  'forest LOD needs an overlap/fallback band');
+assert.match(forestRuntime, /activeTreeColliderGrid/,
+  'tree collision must be derived from visible detailed trunks');
+assert.match(forestRuntime, /farTrunk/,
+  'distant forest must retain representative trunks');
 
 const rectorado = fs.readFileSync(new URL('../src/rectorado-detail.js', import.meta.url), 'utf8');
 assert.match(rectorado, /Rectorado-6A-detail/);
 assert.match(rectorado, /180/);
 assert.match(rectorado, /addTurtle/);
 assert.match(rectorado, /addSealMonument/);
-assert.match(rectorado, /labelPlane\('6A'/);
+const rectoradoV012 = fs.readFileSync(new URL('../src/rectorado-v012.js', import.meta.url), 'utf8');
+assert.match(rectoradoV012, /addMullions/);
+assert.match(rectoradoV012, /addEntranceDoors/);
+assert.match(rectoradoV012, /addSlopedClerestory/);
+assert.match(rectoradoV012, /addDriveAndCurbs/);
+assert.match(rectoradoV012, /addFlowerDetail/);
 
 const runtime = fs.readFileSync(new URL('../src/runtime.js', import.meta.url), 'utf8');
 assert.doesNotMatch(runtime, /CAMPUS\.sprintMultiplier\s*=/, 'runtime must not mutate global sprint configuration');
