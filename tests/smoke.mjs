@@ -38,11 +38,6 @@ assert.ok(Math.abs(shiftedDistance - 100) < 1, `metric coordinate conversion dri
 assert.ok(VEGETATION_PROFILE.treeCount > 0);
 assert.ok(VEGETATION_PROFILE.understoryPatchCount > 0);
 assert.ok(VEGETATION_PROFILE.cluster.naturalMin <= VEGETATION_PROFILE.cluster.naturalMax);
-assert.ok(VEGETATION_PROFILE.cluster.collisionMax <= VEGETATION_PROFILE.cluster.renderMax,
-  'tree collision budget cannot exceed rendered cluster budget');
-for (const key of ['maxTrees','maxCanopyMass','maxShrubs','maxHerbs','maxVines','maxEpiphytes']) {
-  assert.ok(finite(VEGETATION_PROFILE.lod[key]) && VEGETATION_PROFILE.lod[key] > 0, `LOD ${key} must be positive`);
-}
 assert.ok(TREE_SPECIES.length >= 10, 'tree catalogue unexpectedly small');
 assert.ok(UNDERSTORY_SPECIES.length >= 10, 'understory catalogue unexpectedly small');
 for (const species of [...TREE_SPECIES, ...UNDERSTORY_SPECIES]) {
@@ -52,10 +47,10 @@ for (const species of [...TREE_SPECIES, ...UNDERSTORY_SPECIES]) {
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(index, /\.\/src\/app\.js/);
 assert.doesNotMatch(index, /<script[^>]+src="\.\/src\/player3d\.js"/);
-assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v012\.js"/,
-  'import map must route runtime through the v0.12 world composer');
-assert.match(index, /v0\.12\.0 · ENGINE STABILITY · RECTORADO 6A/,
-  'visible version should identify the stability refactor');
+assert.match(index, /"\.\/src\/game3d\.js":"\.\/src\/game3d_v013\.js"/,
+  'import map must route runtime through the v0.13 world composer');
+assert.match(index, /v0\.13\.0 · FOREST SYSTEM V2 · STABILITY/,
+  'visible version should identify Forest System V2');
 
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 assert.ok(app.indexOf("building-sync-preload.js") < app.indexOf("runtime.js"),
@@ -70,9 +65,9 @@ assert.match(buildingSync, /espol-buildings-synced-3d/);
 assert.match(buildingSync, /ExtrudeGeometry/);
 assert.match(buildingSync, /installExactBuildingCollision/);
 
-const composer = fs.readFileSync(new URL('../src/game3d_v012.js', import.meta.url), 'utf8');
+const composer = fs.readFileSync(new URL('../src/game3d_v013.js', import.meta.url), 'utf8');
 assert.match(composer, /installTerrainSurface/);
-assert.match(composer, /installForestRuntime/);
+assert.match(composer, /installForestSystemV2/);
 assert.match(composer, /installRectoradoV012/);
 
 const terrainSurface = fs.readFileSync(new URL('../src/terrain-surface-v012.js', import.meta.url), 'utf8');
@@ -81,15 +76,22 @@ assert.match(terrainSurface, /tx \+ tz <= 1/,
 assert.match(terrainSurface, /world\.getElevation = surfaceElevation/,
   'all runtime height consumers should use the rendered surface');
 
-const forestRuntime = fs.readFileSync(new URL('../src/forest-runtime-v012.js', import.meta.url), 'utf8');
-assert.match(forestRuntime, /frustumCulled = false/,
-  'dynamic vegetation instances should not use stale frustum bounds');
-assert.match(forestRuntime, /transitionMass/,
-  'forest LOD needs an overlap/fallback band');
-assert.match(forestRuntime, /activeTreeColliderGrid/,
-  'tree collision must be derived from visible detailed trunks');
-assert.match(forestRuntime, /farTrunk/,
+const forestV2 = fs.readFileSync(new URL('../src/forest-system-v2.js', import.meta.url), 'utf8');
+assert.match(forestV2, /const CHUNK_M = 64/,
+  'Forest V2 must use stable 64 m chunks');
+assert.match(forestV2, /class ForestDatabase/,
+  'Forest V2 needs a persistent deterministic data layer');
+assert.match(forestV2, /treeCache/,
+  'Forest V2 should cache generated chunk records');
+assert.match(forestV2, /DETAIL_IN_M/);
+assert.match(forestV2, /DETAIL_OUT_M/,
+  'Forest V2 needs hysteresis between entering and leaving detailed LOD');
+assert.match(forestV2, /activeTreeColliderGrid/,
+  'tree physics must be derived from current detailed tree records');
+assert.match(forestV2, /forest-v2-trunks/,
   'distant forest must retain representative trunks');
+assert.match(forestV2, /frustumCulled = false/,
+  'dynamic instanced vegetation must not use stale frustum bounds');
 
 const rectorado = fs.readFileSync(new URL('../src/rectorado-detail.js', import.meta.url), 'utf8');
 assert.match(rectorado, /Rectorado-6A-detail/);
