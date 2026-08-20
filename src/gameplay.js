@@ -9,6 +9,7 @@ function applyMode() {
   const mode = select?.value || 'explore';
   CAMPUS.sprintMultiplier = mode === 'explore' ? 5 : 2.5;
   body.dataset.gameMode = mode;
+  if (mode !== 'horror') body.classList.remove('flashlight-off');
   if (sprintLegend) sprintLegend.textContent = mode === 'explore' ? 'sprint ×5' : 'sprint ×2.5';
   if (hint) {
     hint.textContent = mode === 'shooter'
@@ -23,6 +24,13 @@ function applyMode() {
 
 select?.addEventListener('change', applyMode);
 applyMode();
+
+// Sincroniza el efecto visual de linterna con el interruptor F del motor 3D.
+window.addEventListener('keydown', e => {
+  if (e.code === 'KeyF' && !e.repeat && (select?.value || 'explore') === 'horror') {
+    body.classList.toggle('flashlight-off');
+  }
+});
 
 // app.js actualiza el HUD cada ~100 ms con una etiqueta fija. Este observador
 // corrige sólo el texto visible; la velocidad real usa el objeto CAMPUS compartido.
