@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - scripts/apply-building-sync-v010.mjs
+      - .github/workflows/apply-building-sync-v010.yml
 permissions:
   contents: write
 jobs:
