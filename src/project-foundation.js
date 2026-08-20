@@ -1,23 +1,23 @@
 import { CAMPUS, LANDMARKS } from './config.js';
+import { FIMCP_PHOTO_SURVEY, FIMCP_PHOTO_SLICE, insideFIMCPPhotoSlice, surveyCoverageIsComplete } from './fimcp-photo-survey.js';
 
 export const PROJECT = Object.freeze({
-  version: 'v0.14.0',
-  codename: 'FOUNDATION HARDENING',
+  version: 'v0.15.0',
+  codename: 'FIMCP PHOTO RECONSTRUCTION',
   purpose: 'Master world de ESPOL antes que juego',
   featureFreeze: true,
   targetFps: 60,
-  minimumHealthyFps: 45
+  minimumHealthyFps: 45,
+  activeReconstruction: FIMCP_PHOTO_SLICE.id
 });
 
+// FIEC remains the baseline systems-validation slice because the player spawns
+// there. v0.15 adds FIMCP as the first field-photo reconstruction slice rather
+// than replacing that stable contract.
 export const VERTICAL_SLICE = Object.freeze({
   id: 'fiec-auditorio',
   label: 'FIEC + Auditorio',
-  bounds: Object.freeze({
-    west: -79.96935,
-    east: -79.96585,
-    south: -2.14635,
-    north: -2.14325
-  }),
+  bounds: Object.freeze({ west: -79.96935, east: -79.96585, south: -2.14635, north: -2.14325 }),
   landmarkIds: Object.freeze(['aud-fiec', 'fiec-stop', 'fiec-11b', 'fiec-11f']),
   qualityGates: Object.freeze({
     minCapturedBuildingFootprints: 4,
@@ -67,6 +67,8 @@ export function auditFoundation(world, structures = {}) {
   if (!world?.forestDatabase || !world?.__forestSystemV2) hardErrors.push('forest-v2-not-installed');
   if (typeof world?.resolvePosition !== 'function') hardErrors.push('collision-resolver-missing');
   if (typeof world?.render !== 'function') hardErrors.push('renderer-missing');
+  if (!world?.__fimcpPhotoDetailV015) hardErrors.push('fimcp-photo-reconstruction-not-installed');
+  if (!surveyCoverageIsComplete()) hardErrors.push('fimcp-photo-survey-coverage-broken');
 
   const elevations = [];
   for (const [lng, lat] of VERTICAL_SLICE.terrainSamples) {
@@ -82,19 +84,36 @@ export function auditFoundation(world, structures = {}) {
   }
 
   const captured = globalThis.__ESPOL_BUILDING_SYNC__?.getFeatures?.() || [];
-  const sliceFootprints = captured.filter(feature => {
+  const fiecFootprints = captured.filter(feature => {
     const c = geometryCenter(feature);
     return c && insideVerticalSlice(c.lng, c.lat);
   }).length;
+  const fimcpFootprints = captured.filter(feature => {
+    const c = geometryCenter(feature);
+    return c && insideFIMCPPhotoSlice(c.lng, c.lat);
+  }).length;
   metrics.capturedBuildingFootprints = captured.length;
-  metrics.verticalSliceBuildingFootprints = sliceFootprints;
+  metrics.verticalSliceBuildingFootprints = fiecFootprints;
+  metrics.fimcpSyncedBuildingFootprints = fimcpFootprints;
   metrics.runtimeBuildingVolumes = structures?.buildings?.length || 0;
   metrics.runtimeRoadSegments = structures?.roads?.length || 0;
-  if (sliceFootprints < VERTICAL_SLICE.qualityGates.minCapturedBuildingFootprints) warnings.push('fiec-building-capture-incomplete');
+  if (fiecFootprints < VERTICAL_SLICE.qualityGates.minCapturedBuildingFootprints) warnings.push('fiec-building-capture-incomplete');
+  if (fimcpFootprints < FIMCP_PHOTO_SLICE.qualityGates.minimumSyncedFootprints) warnings.push('fimcp-building-capture-incomplete');
 
   const sliceLandmarks = LANDMARKS.filter(l => VERTICAL_SLICE.landmarkIds.includes(l.id));
   metrics.verticalSliceLandmarks = sliceLandmarks.length;
   if (sliceLandmarks.length !== VERTICAL_SLICE.landmarkIds.length) hardErrors.push('vertical-slice-landmark-contract-broken');
+  const fimcpAnchors = LANDMARKS.filter(l => FIMCP_PHOTO_SLICE.anchorIds.includes(l.id));
+  metrics.fimcpAnchors = fimcpAnchors.length;
+  if (fimcpAnchors.length !== FIMCP_PHOTO_SLICE.anchorIds.length) hardErrors.push('fimcp-photo-anchor-contract-broken');
+
+  metrics.fimcpPhotoCount = FIMCP_PHOTO_SURVEY.photoCount;
+  metrics.fimcpFullResolutionEvidence = FIMCP_PHOTO_SURVEY.originalResolutionPhotos.length;
+  metrics.fimcpPdfFallbackEvidence = FIMCP_PHOTO_SURVEY.pdfFallbackRange[1] - FIMCP_PHOTO_SURVEY.pdfFallbackRange[0] + 1;
+  metrics.fimcpPhotoReport = world?.fimcpPhotoReport || null;
+  if (world?.fimcpPhotoReport?.decoratedFootprints < FIMCP_PHOTO_SLICE.qualityGates.minimumDecoratedFootprints) {
+    warnings.push('fimcp-photo-detail-underresolved');
+  }
 
   metrics.avatarHeightM = CAMPUS.avatarHeightM;
   if (CAMPUS.avatarHeightM < VERTICAL_SLICE.qualityGates.humanScaleMinM || CAMPUS.avatarHeightM > VERTICAL_SLICE.qualityGates.humanScaleMaxM) {
@@ -105,6 +124,7 @@ export function auditFoundation(world, structures = {}) {
     version: PROJECT.version,
     phase: PROJECT.codename,
     slice: VERTICAL_SLICE.id,
+    photoSlice: FIMCP_PHOTO_SLICE.id,
     ok: hardErrors.length === 0,
     degraded: hardErrors.length === 0 && warnings.length > 0,
     hardErrors: Object.freeze(hardErrors),
@@ -118,10 +138,19 @@ export function installProjectMetadata() {
   if (typeof document === 'undefined') return;
   document.documentElement.dataset.espolBuilderVersion = PROJECT.version;
   document.body?.setAttribute('data-project-phase', PROJECT.codename);
-  globalThis.__ESPOL_PROJECT__ = { PROJECT, VERTICAL_SLICE };
+  globalThis.__ESPOL_PROJECT__ = { PROJECT, VERTICAL_SLICE, FIMCP_PHOTO_SLICE, FIMCP_PHOTO_SURVEY };
 
   const badge = document.querySelector('.topbar .badge');
-  if (badge) badge.textContent = `${PROJECT.version} · ${PROJECT.codename} · FIEC VERTICAL SLICE`;
+  if (badge) badge.textContent = `${PROJECT.version} · FIMCP PHOTO SURVEY · 100 VISTAS`;
+
+  // Keep the existing HTML shell small; update its explanatory panel at runtime
+  // so v0.15 can be deployed without duplicating the UI architecture.
+  const changeSummary = [...document.querySelectorAll('details > summary')].find(x => /Qué cambió/i.test(x.textContent || ''));
+  if (changeSummary) {
+    changeSummary.textContent = 'Qué cambió en v0.15';
+    const p = changeSummary.parentElement?.querySelector('.fineprint');
+    if (p) p.textContent = 'FIMCP es el primer vertical slice reconstruido con levantamiento fotográfico de campo: 100 vistas secuenciales del Auditorio, estacionamientos, LEMAT, corredores, patios, zonas de servicio y borde de transporte. Las huellas siguen viniendo del GIS; las fotos gobiernan fachadas, colores, circulaciones y vocabulario arquitectónico. No se cargan las fotos de 500 MB en runtime.';
+  }
 
   const buffer = globalThis.__ESPOL_RUNTIME_ERRORS__ ||= [];
   const remember = (type, payload) => {
@@ -137,15 +166,15 @@ export function installProjectMetadata() {
     document.body.dataset.foundationState = state;
     if (badge) {
       badge.dataset.foundationState = state;
-      badge.title = report?.warnings?.length
-        ? `Foundation: ${state} · ${report.warnings.join(', ')}`
+      const f = report?.metrics?.fimcpPhotoReport;
+      badge.title = f
+        ? `FIMCP: ${f.syncedFootprintsInSlice} huellas · ${f.decoratedFootprints} decoradas · 100 fotos` 
         : `Foundation: ${state}`;
     }
   });
 
-  // Compatibility bridge: runtime.js predates centralized project metadata and
-  // still owns one startup toast. Keep user-facing version text coherent without
-  // creating a second runtime or mutating world state.
+  // Compatibility bridge for the legacy startup toast only; this does not alter
+  // world state or create a second version source.
   const toast = document.querySelector('#toast');
   if (toast && typeof MutationObserver !== 'undefined') {
     const normalizeToastVersion = () => {
