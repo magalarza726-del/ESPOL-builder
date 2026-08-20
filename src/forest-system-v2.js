@@ -26,9 +26,17 @@ function localToLngLat(x, z) {
 }
 function chunkCoord(v) { return Math.floor(v / CHUNK_M); }
 function chunkKey(cx, cz) { return `${cx}:${cz}`; }
+function anchorSeed(p) {
+  const direct = Number(p?.id);
+  if (Number.isFinite(direct)) return direct;
+  return Math.abs(Math.round((+p?._x || 0) * 31 + (+p?._z || 0) * 17)) + 1;
+}
+function anchorId(p) {
+  return p?.id != null ? String(p.id) : `xz:${Math.round((+p?._x || 0) * 100)}:${Math.round((+p?._z || 0) * 100)}`;
+}
 function clusterOffset(p, i) {
   if (i === 0) return { x: 0, z: 0 };
-  const id = (+p.id || 1) * 37 + i * 101;
+  const id = anchorSeed(p) * 37 + i * 101;
   const angle = hash01(id) * Math.PI * 2;
   const r = Math.sqrt(hash01(id + 17)) * Math.max(2, +p.clusterSpreadM || 8);
   return { x: Math.cos(angle) * r, z: Math.sin(angle) * r };
@@ -160,14 +168,18 @@ class ForestDatabase {
       const copies = Math.max(1, Math.min(+p.clusterSize || 1, VEGETATION_PROFILE.cluster.renderMax || 66));
       for (let j = 0; j < copies; j++) {
         const off = clusterOffset(p, j);
-        const jitter = .78 + hash01((+p.id || 1) * 71 + j * 13) * .46;
+        const seed = anchorSeed(p);
+        const aid = anchorId(p);
+        const jitter = .78 + hash01(seed * 71 + j * 13) * .46;
         trees.push({
-          id: `${p.id ?? 'a'}:${j}`,
+          id: `${aid}:${j}`,
+          anchorId: aid,
+          anchorCopies: copies,
           x: p._x + off.x,
           z: p._z + off.z,
           height: Math.max(2.5, (+p.height || 7) * jitter),
-          canopy: Math.max(1, (+p.canopyM || 2.4) * (.82 + hash01(j + (+p.id || 1) * 9) * .36)),
-          trunk: Math.max(.035, (+p.trunkRadiusM || .08) * (.72 + hash01(j * 5 + (+p.id || 1)) * .55)),
+          canopy: Math.max(1, (+p.canopyM || 2.4) * (.82 + hash01(j + seed * 9) * .36)),
+          trunk: Math.max(.035, (+p.trunkRadiusM || .08) * (.72 + hash01(j * 5 + seed) * .55)),
           form: p.form || 'round',
           props: p,
           y: null
@@ -294,7 +306,7 @@ export function installForestSystemV2(world) {
 
     const previousDetail = this.forestDetailIds;
     const nextDetail = new Set();
-    const selectedAnchorIds = new Set();
+    const selectedAnchorCounts = new Map();
     this.activeTreeColliders.length = 0;
     this.activeTreeColliderGrid.clear();
 
@@ -323,7 +335,7 @@ export function installForestSystemV2(world) {
       this.activeTreeColliders.push(collider);
       colliderInsert(this.activeTreeColliderGrid, this.treeColliderCellM, collider);
       nextDetail.add(tree.id);
-      selectedAnchorIds.add(String(tree.id).split(':')[0]);
+      selectedAnchorCounts.set(tree.anchorId, (selectedAnchorCounts.get(tree.anchorId) || 0) + 1);
       ti++;
     }
 
@@ -341,8 +353,9 @@ export function installForestSystemV2(world) {
       if (massN >= massBudget) break;
       const p = f.properties || {};
       const d = Math.sqrt(d2);
-      const anchorId = String(p.id ?? 'a');
-      const fullyNear = d < MASS_IN_M && selectedAnchorIds.has(anchorId);
+      const aid = anchorId(p);
+      const copies = Math.max(1, Math.min(+p.clusterSize || 1, VEGETATION_PROFILE.cluster.renderMax || 66));
+      const fullyNear = d < MASS_IN_M && (selectedAnchorCounts.get(aid) || 0) >= copies;
       if (fullyNear) continue;
       const [lng, lat] = f.geometry.coordinates;
       const y = this.getElevation(lng, lat) - this.originElev;
@@ -359,7 +372,7 @@ export function installForestSystemV2(world) {
         const tx = p._x + off.x, tz = p._z + off.z;
         const ll = localToLngLat(tx, tz);
         const ty = this.getElevation(ll.lng, ll.lat) - this.originElev;
-        const th = h * (.72 + hash01((+p.id || 1) * 17 + j) * .18);
+        const th = h * (.72 + hash01(anchorSeed(p) * 17 + j) * .18);
         const radius = Math.max(.055, (+p.trunkRadiusM || .08) * 1.12);
         this.instance(this.veg.farTrunkV2, farN++, tx, ty + th * .32, tz,
           radius, th * .64, radius, null);
