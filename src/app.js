@@ -1,10 +1,9 @@
 // Compatibility entrypoint for GitHub Pages.
-// v0.10 preloads the MapLibre building capture BEFORE runtime.js creates the map.
+// Building footprints must be captured before runtime.js creates MapLibre.
 await import('./building-sync-preload.js');
 
-// GameWorld keeps a small set of global input listeners for jump/jetpack.
-// Stop gameplay-only keys during GIS map mode so returning to the game cannot
-// inherit a queued jump/jetpack action from the map screen.
+// Stop gameplay-only keys while GIS Map mode owns the keyboard so returning to
+// the 3D runtime cannot inherit a queued jump, jetpack or flashlight action.
 document.addEventListener('keydown', event => {
   if (document.body.classList.contains('map-mode') && ['Space', 'KeyF'].includes(event.code)) {
     event.stopImmediatePropagation();
