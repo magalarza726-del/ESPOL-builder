@@ -1,4 +1,8 @@
-// Compatibility entrypoint for GitHub Pages.
+// Stable entrypoint for GitHub Pages.
+// Project metadata/error capture must exist before any GIS/game systems boot.
+const { installProjectMetadata } = await import('./project-foundation.js');
+installProjectMetadata();
+
 // Building footprints must be captured before runtime.js creates MapLibre.
 await import('./building-sync-preload.js');
 
