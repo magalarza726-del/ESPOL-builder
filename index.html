@@ -22,12 +22,12 @@
     <div class="loader-card">
       <div class="loader-mark">EB</div><h1>ESPOL Builder</h1>
       <p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div>
-      <small>Terreno 1:1 · bosque calibrado · edificios · colisiones · gameplay por modo</small>
+      <small>Terreno 1:1 · bosque ×6 efectivo · edificios · colisiones · gameplay por modo</small>
     </div>
   </div>
 
   <header class="topbar glass">
-    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.8.0 · GAMEPLAY MODES</span></div>
+    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.8.1 · FOREST ×6 · FLASHLIGHT</span></div>
     <div class="top-actions">
       <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
       <button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button>
@@ -59,25 +59,25 @@
     <div class="control-row">
       <label><input id="terrainToggle" type="checkbox" checked> Relieve real · precalculado</label>
       <label><input id="buildingsToggle" type="checkbox" checked> Edificios ESPOL · colisión activa</label>
-      <label><input id="treesToggle" type="checkbox" checked> Bosque + sotobosque · alta densidad LOD</label>
+      <label><input id="treesToggle" type="checkbox" checked> Bosque + sotobosque · densidad ×6 LOD</label>
       <label><input id="imageryToggle" type="checkbox"> Foto aérea sólo en Mapa GIS</label>
       <label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label>
       <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label>
     </div>
 
     <div class="season-card"><div><span>Estado estacional del bosque</span><b id="seasonLabel">Seca</b></div><input id="season" type="range" min="0" max="100" value="25" /><div class="season-scale"><span>seca / semideciduo</span><span>lluviosa / rebrote</span></div></div>
-    <div class="mode-card"><span>Plantilla de juego</span><select id="gameMode"><option value="explore">Exploración</option><option value="horror">Terror nocturno</option><option value="rpg">RPG</option><option value="shooter">Shooter sandbox</option></select><small id="modeActionHint">Exploración: Espacio = saltar · Shift = velocidad ×10</small></div>
+    <div class="mode-card"><span>Plantilla de juego</span><select id="gameMode"><option value="explore">Exploración</option><option value="horror">Terror nocturno</option><option value="rpg">RPG</option><option value="shooter">Shooter sandbox</option></select><small id="modeActionHint">Exploración: Espacio = saltar · Shift = velocidad ×5</small></div>
 
     <div class="fact-strip"><div><b>73%</b><span>juveniles en DAP bajo</span></div><div><b>80%</b><span>campus forestal</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
 
-    <details open><summary>Qué cambió en v0.8</summary><p class="fineprint">Se corrigió el bloqueo del spawn por colisiones aproximadas. La tercera persona ahora usa cámara desplazada sobre el hombro. Espacio salta en Exploración, Terror y Shooter; en RPG activa un jetpack mientras se mantiene pulsado. Shooter añade pistola, postura de empuñe, retroceso y fogonazo. Terror oscurece el mundo más de 3× y añade linterna con F. En Exploración, Shift usa ×10; en los otros modos conserva ×2,5.</p></details>
+    <details open><summary>Qué cambió en v0.8.1</summary><p class="fineprint">La linterna deja de usar un disco terminal que se veía como una burbuja gigante: ahora es un haz frontal abierto y estrecho que sigue exactamente la cámara. Exploración reduce Shift de ×10 a ×5. El bosque aumenta +500% de densidad efectiva frente a v0.8 mediante más anclas y grupos naturales más densos, pero conserva instancing, auto-LOD y límites de geometría simultánea para mantener la fluidez.</p></details>
     <details><summary>Vegetación investigada</summary><p class="fineprint">La estructura arbórea se calibra con parcelas baja, media y alta de ESPOL; el sotobosque incorpora arbustos, herbáceas, trepadoras y epífitas.</p><div id="speciesList" class="species-list"></div></details>
     <details><summary>Edificios documentados</summary><div id="buildingList" class="building-list"></div></details>
-    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera y tercera persona usan Three.js con DEM en memoria, geometría instanciada, LOD y resolución adaptativa.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a></details>
+    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera y tercera persona usan Three.js con DEM en memoria, geometría instanciada, LOD y resolución adaptativa. v0.8.1 evita reconstruir vegetación y redimensionar WebGL en cada frame.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a></details>
   </aside>
 
   <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
-  <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> salto / jetpack</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×10</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIEC</span><span><kbd>F</kbd> linterna (Terror)</span><span class="fp-help">Shooter: clic = disparar</span></div>
+  <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> salto / jetpack</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×5</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIEC</span><span><kbd>F</kbd> linterna (Terror)</span><span class="fp-help">Shooter: clic = disparar</span></div>
   <div id="toast" class="toast glass" aria-live="polite"></div>
   <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
 
