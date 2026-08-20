@@ -1,15 +1,12 @@
 // Catálogo compacto para la representación procedural del sotobosque del BVPP.
-// Se basa principalmente en dos inventarios ESPOL:
-// - Rubio & Vásquez (2010): 32 especies no arbustivas en zona alta; 15 herbáceas,
-//   14 trepadoras y 3 epífitas/parásitas. Panicum maximum tuvo IVI 9,88 % y
-//   Marsdenia ecuadoriensis 6,48 %.
-// - Adriano Macas (2024/2025): árboles, arbustos y herbáceas en parcelas baja,
-//   media y alta; en época seca hubo poca cobertura herbácea y la parcela alta,
-//   cercana a quebrada estacional, presentó helechos, Cactaceae y una orquídea
-//   presumiblemente Epidendrum.
+// Fuentes principales:
+// - Adriano Macas (ESPOL 2024/2025): 245 árboles DAP>=5 cm en 3000 m²,
+//   con 73% de individuos en las clases de DAP 5–15 cm; parcelas baja/media/alta.
+// - Rubio & Vásquez (ESPOL 2010): herbáceas, trepadoras y epífitas de zona alta.
+// - Plan de manejo BVPP (ESPOL 2021): bosque seco restaurado/secundario con parches.
 //
-// Los pesos sirven para una reconstrucción visual, NO para inferir abundancias
-// exactas fuera de los transectos publicados.
+// IMPORTANTE: la densidad observada en parcelas sirve como referencia estructural.
+// No se extrapola como un censo exacto árbol-por-árbol de todo el campus.
 
 export const UNDERSTORY_SPECIES = [
   {name:'Pasto guinea',scientific:'Panicum maximum',habit:'herb',form:'grass',weight:9.88,native:false,dryPersistence:.72},
@@ -26,6 +23,8 @@ export const UNDERSTORY_SPECIES = [
   {name:'Verbesina',scientific:'Verbesina sp.',habit:'herb',form:'broad',weight:1.35,native:true,dryPersistence:.42},
   {name:'Senna',scientific:'Senna sp.',habit:'herb',form:'broad',weight:.92,native:true,dryPersistence:.50},
   {name:'Eucrosia',scientific:'Eucrosia bicolor',habit:'herb',form:'broad',weight:.70,native:true,dryPersistence:1.0,seasonalDry:true},
+  {name:'Helecho de quebrada',scientific:'Pteridophyta sp.',habit:'herb',form:'fern',weight:1.9,native:true,dryPersistence:.18,moisture:'ravine'},
+  {name:'Cactácea de bosque seco',scientific:'Cactaceae sp.',habit:'herb',form:'cactus',weight:.75,native:true,dryPersistence:1.0,moisture:'dry'},
 
   {name:'Marsdenia',scientific:'Marsdenia ecuadoriensis',habit:'vine',form:'vine',weight:6.48,native:true,dryPersistence:.72},
   {name:'Arrabidaea',scientific:'Arrabidaea sp.',habit:'vine',form:'vine',weight:5.40,native:true,dryPersistence:.70},
@@ -53,32 +52,42 @@ export const UNDERSTORY_SPECIES = [
   {name:'Randia',scientific:'Randia armata',habit:'shrub',form:'shrub',weight:1.8,native:true,dryPersistence:.68},
   {name:'Ipomoea arbustiva',scientific:'Ipomoea carnea',habit:'shrub',form:'shrub',weight:1.1,native:true,dryPersistence:.62},
   {name:'Croton',scientific:'Croton sp.',habit:'shrub',form:'shrub',weight:1.3,native:true,dryPersistence:.70},
-  {name:'Bauhinia',scientific:'Bauhinia aculeata',habit:'shrub',form:'shrub',weight:1.2,native:true,dryPersistence:.70},
-
-  {name:'Helecho de quebrada',scientific:'Pteridophyta sp.',habit:'herb',form:'fern',weight:1.9,native:true,dryPersistence:.18,moisture:'ravine'},
-  {name:'Cactácea de bosque seco',scientific:'Cactaceae sp.',habit:'herb',form:'cactus',weight:.75,native:true,dryPersistence:1.0,moisture:'dry'}
+  {name:'Bauhinia',scientific:'Bauhinia aculeata',habit:'shrub',form:'shrub',weight:1.2,native:true,dryPersistence:.70}
 ];
 
 export const VEGETATION_PROFILE = {
-  treeCount: 3600,
-  understoryPatchCount: 1800,
-  // Distribución visual de parches; no compara densidades por m² entre estudios
-  // porque los tamaños de subparcelas de cada hábito son distintos.
+  // Los puntos son ANCLAS de pequeños grupos, no un árbol = un punto.
+  // Esto mantiene el GeoJSON ligero y permite que el renderer represente un
+  // bosque visualmente denso mediante instancias deterministas alrededor del ancla.
+  treeCount: 9000,
+  understoryPatchCount: 4200,
+  sampledTreeDensityHa: 817,
+  lowPlotTreeDensityHa: 990,
+  midPlotTreeDensityHa: 910,
+  juvenileShare: .73,
   habitMix: {herb:.46,vine:.29,shrub:.20,epiphyte:.05},
   highMoistureRadiusM: 720,
   ravineBoost: 2.4,
-  // LOD 3D orientado a Pages: el mapa lejano usa masa/heatmap y solo lo cercano
-  // se convierte en geometría instanciada.
+  cluster: {
+    naturalMin: 8,
+    naturalMax: 22,
+    campusMin: 1,
+    campusMax: 4,
+    spreadM: 8.5
+  },
   lod: {
-    treeRadiusM: 330,
-    understoryRadiusM: 135,
-    maxTrees: 160,
-    maxShrubs: 180,
-    maxHerbs: 240,
-    maxVines: 72,
-    maxEpiphytes: 32,
-    refreshMs: 900,
-    refreshMoveM: 38,
-    gridCellM: 150
+    // Dentro de ~90 m se pretende recuperar la sensación de cientos de fustes/ha.
+    treeRadiusM: 105,
+    understoryRadiusM: 78,
+    canopyMassRadiusM: 620,
+    maxTrees: 1600,
+    maxCanopyMass: 950,
+    maxShrubs: 420,
+    maxHerbs: 650,
+    maxVines: 170,
+    maxEpiphytes: 70,
+    refreshMs: 620,
+    refreshMoveM: 18,
+    gridCellM: 95
   }
 };
