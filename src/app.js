@@ -14,10 +14,12 @@ function notify(msg){toast.textContent=msg;toast.classList.add('show');clearTime
 function loadingStep(p,text){loadingBar.style.width=`${p}%`;loadingText.textContent=text}
 
 const CAMERA={
-  map:{label:'Mapa libre'},
+  map:{label:'Mapa ESPOL'},
   follow:{label:'3ª persona'},
   firstperson:{label:'1ª persona'}
 };
+const CAMPUS_BOUNDS=[[CAMPUS.bounds.west,CAMPUS.bounds.south],[CAMPUS.bounds.east,CAMPUS.bounds.north]];
+const BASE_SPEED_MPS=CAMPUS.jogSpeedMps*3; // petición de diseño: velocidad base triplicada
 
 const map=new maplibregl.Map({
   container:'map',
@@ -27,8 +29,10 @@ const map=new maplibregl.Map({
   pitch:67,
   bearing:CAMPUS.spawnBearing,
   maxPitch:95,
-  minZoom:12.2,
+  minZoom:14.2,
   maxZoom:21,
+  maxBounds:CAMPUS_BOUNDS,
+  renderWorldCopies:false,
   centerClampedToGround:false,
   canvasContextAttributes:{antialias:true,powerPreference:'high-performance'},
   attributionControl:false,
@@ -47,7 +51,6 @@ const player={
   speedMps:0
 };
 
-// Marcador 2D solo para la vista de mapa. En tercera persona se usa el modelo 3D métrico.
 const playerEl=document.createElement('div');
 playerEl.className='player-marker';
 playerEl.innerHTML='<span class="player-arrow">▲</span>';
@@ -66,7 +69,13 @@ const state={
   draggingLook:false,
   lastPointerX:0,
   pitchLook:0,
-  forestData:null
+  forestData:null,
+  moveForward:0,
+  moveRight:0,
+  currentSpeed:0,
+  turnRate:0,
+  lastHudUpdate:0,
+  lastLandmarkCheck:0
 };
 const keys=new Set();
 
@@ -75,6 +84,13 @@ function normBearing(b){return(b%360+360)%360}
 function metersToLng(m,lat){return m/(111320*Math.cos(rad(lat)))}
 function metersToLat(m){return m/110574}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function moveTowards(current,target,maxDelta){
+  if(Math.abs(target-current)<=maxDelta)return target;
+  return current+Math.sign(target-current)*maxDelta;
+}
+function expApproach(current,target,responsiveness,dt){
+  return target+(current-target)*Math.exp(-responsiveness*dt);
+}
 function haversine(a,b){const R=6371000;const p1=rad(a.lat),p2=rad(b.lat),dp=rad(b.lat-a.lat),dl=rad(b.lng-a.lng);const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
 function formatDistance(m){return m<1000?`${Math.round(m)} m`:`${(m/1000).toFixed(2)} km`}
 function formatCoords(lng,lat){return `${lat.toFixed(5)}, ${lng.toFixed(5)}`}
@@ -95,6 +111,13 @@ function moveBy(forward,right,meters){
   player.totalM+=haversine(before,player);
 }
 
+function moveStable(forward,right,distanceM){
+  const maxStep=Math.max(.5,CAMPUS.movementSubstepM||1.25);
+  const steps=Math.max(1,Math.ceil(Math.abs(distanceM)/maxStep));
+  const step=distanceM/steps;
+  for(let i=0;i<steps;i++)moveBy(forward,right,step);
+}
+
 function updateMapMarker(){
   playerMarker.setLngLat([player.lng,player.lat]);
   playerEl.style.setProperty('--player-bearing',`${player.bearing}deg`);
@@ -109,7 +132,7 @@ function updateHUD(){
   hud.bearing.textContent=`${Math.round(normBearing(player.bearing))}°`;
   hud.viewMode.textContent=CAMERA[state.cameraMode].label;
   hud.coords.textContent=formatCoords(player.lng,player.lat);
-  if(hud.pace)hud.pace.textContent=player.speedMps>.01?(player.speedMps>CAMPUS.jogSpeedMps*1.05?'Sprint ×2.5':'Trote'):'Quieto';
+  if(hud.pace)hud.pace.textContent=player.speedMps>.15?(player.speedMps>BASE_SPEED_MPS*1.08?'Sprint ×2.5':'Movimiento base ×3'):'Quieto';
 }
 
 function setMapInteractions(enabled){
@@ -118,7 +141,6 @@ function setMapInteractions(enabled){
     const h=map[name];if(!h)continue;
     try{enabled?h.enable():h.disable()}catch{}
   }
-  // WASD/QE son del jugador, no del teclado de MapLibre.
   try{map.keyboard.disable()}catch{}
 }
 
@@ -145,9 +167,10 @@ function applyCamera(){
     return;
   }
 
-  // Cámara realmente situada a altura de ojos, no un “zoom muy inclinado”.
   const lookDistance=22;
   const target=offsetLngLat(player.lng,player.lat,player.bearing,lookDistance,0);
+  target.lng=clamp(target.lng,CAMPUS.bounds.west,CAMPUS.bounds.east);
+  target.lat=clamp(target.lat,CAMPUS.bounds.south,CAMPUS.bounds.north);
   const playerGround=terrainElevation(player.lng,player.lat);
   const targetGround=terrainElevation(target.lng,target.lat);
   if(Number.isFinite(playerGround)&&Number.isFinite(targetGround)){
@@ -169,16 +192,27 @@ function syncVegetationPresentation(){
 }
 
 function syncBasemapPresentation(){
-  // La vista Mapa conserva la cartografía limpia que ya funcionaba bien.
-  // Las cámaras jugables pueden usar fotografía aérea drapeada sobre el DEM.
   const showImagery=state.imageryEnabled&&state.cameraMode!=='map';
   if(map.getLayer('espol-imagery')){
     map.setLayoutProperty('espol-imagery','visibility',showImagery?'visible':'none');
-    map.setPaintProperty('espol-imagery','raster-opacity',showImagery ? .84 : 0);
+    map.setPaintProperty('espol-imagery','raster-opacity',showImagery?.84:0);
   }
   if(map.getLayer('espol-buildings-3d')){
-    map.setPaintProperty('espol-buildings-3d','fill-extrusion-opacity',showImagery ? .89 : .94);
+    map.setPaintProperty('espol-buildings-3d','fill-extrusion-opacity',showImagery?.89:.94);
   }
+}
+
+function focusCampus({duration=650}={}){
+  const padding=Math.max(34,Math.min(82,Math.round(Math.min(innerWidth,innerHeight)*.07)));
+  map.fitBounds(CAMPUS_BOUNDS,{padding,duration,bearing:0,pitch:42});
+}
+
+function lockMapToCampus(){
+  map.setMaxBounds(CAMPUS_BOUNDS);
+  try{
+    const camera=map.cameraForBounds(CAMPUS_BOUNDS,{padding:48});
+    if(camera&&Number.isFinite(camera.zoom))map.setMinZoom(Math.max(14.2,camera.zoom-.08));
+  }catch{}
 }
 
 function setCameraMode(mode,{notifyUser=true}={}){
@@ -194,11 +228,11 @@ function setCameraMode(mode,{notifyUser=true}={}){
   updateMapMarker();
 
   if(mode==='map'){
-    map.easeTo({center:[player.lng,player.lat],bearing:0,pitch:54,zoom:16.65,duration:650});
-    if(notifyUser)notify('Mapa libre: rueda = zoom · arrastra = desplazar · clic derecho = rotar');
+    focusCampus();
+    if(notifyUser)notify('Mapa limitado a ESPOL · rueda = zoom · arrastra = desplazar');
   }else{
     applyCamera();
-    if(notifyUser)notify(mode==='follow'?'Tercera persona a escala real':'Primera persona a 1,68 m sobre el terreno');
+    if(notifyUser)notify(mode==='follow'?'Tercera persona · movimiento suavizado':'Primera persona a 1,68 m sobre el terreno');
   }
   updateHUD();
 }
@@ -222,40 +256,69 @@ function renderProgress(){
 renderProgress();
 
 function gameLoop(now){
-  const dt=Math.min(.055,(now-state.lastFrame)/1000);state.lastFrame=now;
-  let forward=0,strafe=0,rotate=0;
-  if(keys.has('KeyW'))forward+=1;if(keys.has('KeyS'))forward-=1;
-  if(keys.has('KeyA'))strafe-=1;if(keys.has('KeyD'))strafe+=1;
-  if(keys.has('KeyQ')||keys.has('ArrowLeft'))rotate-=1;
-  if(keys.has('KeyE')||keys.has('ArrowRight'))rotate+=1;
-  player.bearing=normBearing(player.bearing+rotate*92*dt);
+  const dt=Math.min(.05,Math.max(0,(now-state.lastFrame)/1000));state.lastFrame=now;
+  let rawForward=0,rawRight=0,rawRotate=0;
+  if(keys.has('KeyW'))rawForward+=1;if(keys.has('KeyS'))rawForward-=1;
+  if(keys.has('KeyA'))rawRight-=1;if(keys.has('KeyD'))rawRight+=1;
+  if(keys.has('KeyQ')||keys.has('ArrowLeft'))rawRotate-=1;
+  if(keys.has('KeyE')||keys.has('ArrowRight'))rawRotate+=1;
 
-  const moving=forward||strafe;
+  const rawLen=Math.hypot(rawForward,rawRight);
+  if(rawLen>0){rawForward/=rawLen;rawRight/=rawLen}
+
+  const inputResponse=CAMPUS.inputResponsiveness||18;
+  state.moveForward=expApproach(state.moveForward,rawForward,inputResponse,dt);
+  state.moveRight=expApproach(state.moveRight,rawRight,inputResponse,dt);
+  if(rawLen===0&&Math.abs(state.moveForward)<.002)state.moveForward=0;
+  if(rawLen===0&&Math.abs(state.moveRight)<.002)state.moveRight=0;
+
+  const targetTurn=rawRotate*(CAMPUS.turnSpeedDegS||120);
+  state.turnRate=expApproach(state.turnRate,targetTurn,CAMPUS.turnResponsiveness||16,dt);
+  if(rawRotate===0&&Math.abs(state.turnRate)<.03)state.turnRate=0;
+  player.bearing=normBearing(player.bearing+state.turnRate*dt);
+
+  const moving=rawLen>0||Math.hypot(state.moveForward,state.moveRight)>.01;
   const sprinting=keys.has('ShiftLeft')||keys.has('ShiftRight');
-  const speedMps=CAMPUS.jogSpeedMps*(sprinting?CAMPUS.sprintMultiplier:1);
-  if(moving){
-    const len=Math.hypot(forward,strafe)||1;
-    moveBy(forward/len,strafe/len,speedMps*dt);
-    player.speedMps=speedMps;player.lastSpeedKmh=speedMps*3.6;
-  }else{
-    player.speedMps=0;player.lastSpeedKmh*=.72;if(player.lastSpeedKmh<.08)player.lastSpeedKmh=0;
+  const targetSpeed=moving?BASE_SPEED_MPS*(sprinting?CAMPUS.sprintMultiplier:1):0;
+  const accel=targetSpeed>state.currentSpeed?(CAMPUS.accelerationMps2||34):(CAMPUS.brakingMps2||44);
+  state.currentSpeed=moveTowards(state.currentSpeed,targetSpeed,accel*dt);
+  if(!moving&&state.currentSpeed<.025)state.currentSpeed=0;
+
+  const smoothLen=Math.hypot(state.moveForward,state.moveRight);
+  if(state.currentSpeed>0&&smoothLen>.001){
+    const forward=state.moveForward/smoothLen,right=state.moveRight/smoothLen;
+    moveStable(forward,right,state.currentSpeed*dt);
   }
+  player.speedMps=state.currentSpeed;
+  player.lastSpeedKmh=state.currentSpeed*3.6;
 
   updateMapMarker();
-  if(state.cameraMode!=='map')applyCamera();
-  updateHUD();checkLandmarks();
+  if(state.cameraMode!=='map'&&(state.currentSpeed>.001||Math.abs(state.turnRate)>.01))applyCamera();
+
+  if(now-state.lastHudUpdate>(CAMPUS.hudIntervalMs||80)){
+    state.lastHudUpdate=now;updateHUD();
+  }
+  if(now-state.lastLandmarkCheck>(CAMPUS.landmarkIntervalMs||220)){
+    state.lastLandmarkCheck=now;checkLandmarks();
+  }
   requestAnimationFrame(gameLoop);
 }
 
 function addCampusBounds(){
   const b=CAMPUS.bounds;
-  map.addSource('campus-bounds',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[[[b.west,b.south],[b.east,b.south],[b.east,b.north],[b.west,b.north],[b.west,b.south]]]}}});
+  const campusRing=[[b.west,b.south],[b.east,b.south],[b.east,b.north],[b.west,b.north],[b.west,b.south]];
+  map.addSource('campus-bounds',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[campusRing]}}});
   map.addLayer({id:'campus-fill',type:'fill',source:'campus-bounds',paint:{'fill-color':'#36d7b7','fill-opacity':.018}});
   map.addLayer({id:'campus-outline',type:'line',source:'campus-bounds',paint:{'line-color':'#45d6c0','line-width':1.5,'line-opacity':.58,'line-dasharray':[3,2]}});
+
+  const worldRing=[[-180,-85],[180,-85],[180,85],[-180,85],[-180,-85]];
+  const holeRing=[[b.west,b.south],[b.west,b.north],[b.east,b.north],[b.east,b.south],[b.west,b.south]];
+  map.addSource('outside-campus-mask',{type:'geojson',data:{type:'Feature',properties:{},geometry:{type:'Polygon',coordinates:[worldRing,holeRing]}}});
+  map.addLayer({id:'outside-campus-mask',type:'fill',source:'outside-campus-mask',paint:{'fill-color':'#07131f','fill-opacity':1,'fill-antialias':false}});
 }
 
 function addTerrain(){
-  map.addSource('terrain-dem',{type:'raster-dem',tiles:[MAP_SOURCES.terrain],encoding:'terrarium',tileSize:256,maxzoom:15,attribution:'Terrain: Mapzen/AWS elevation tiles'});
+  map.addSource('terrain-dem',{type:'raster-dem',tiles:[MAP_SOURCES.terrain],bounds:[CAMPUS.bounds.west,CAMPUS.bounds.south,CAMPUS.bounds.east,CAMPUS.bounds.north],encoding:'terrarium',tileSize:256,maxzoom:15,attribution:'Terrain: Mapzen/AWS elevation tiles'});
   map.setTerrain({source:'terrain-dem',exaggeration:1});
   map.addLayer({id:'terrain-hillshade',type:'hillshade',source:'terrain-dem',paint:{
     'hillshade-exaggeration':.27,
@@ -269,6 +332,7 @@ function addImagery(){
   map.addSource('espol-world-imagery',{
     type:'raster',
     tiles:[MAP_SOURCES.imagery],
+    bounds:[CAMPUS.bounds.west,CAMPUS.bounds.south,CAMPUS.bounds.east,CAMPUS.bounds.north],
     tileSize:256,
     maxzoom:19,
     attribution:'Imagery © Esri, Maxar, Earthstar Geographics, GIS User Community'
@@ -307,7 +371,6 @@ function addForest(){
   state.forestData=buildProceduralForest();
   map.addSource('procedural-forest',{type:'geojson',data:state.forestData});
 
-  // A distancia se percibe una masa forestal continua, no miles de “lunares”.
   map.addLayer({id:'forest-mass',type:'heatmap',source:'procedural-forest',maxzoom:17.4,paint:{
     'heatmap-weight':['case',['==',['get','zone'],'bpp'],1,.38],
     'heatmap-intensity':['interpolate',['linear'],['zoom'],12.5,.38,16,1.1],
@@ -346,7 +409,6 @@ function addLandmarks(){
     'text-offset':[0,1.2],'text-anchor':'top','text-max-width':12,'text-allow-overlap':false
   },paint:{'text-color':'#34404a','text-halo-color':'rgba(255,255,255,.92)','text-halo-width':1.4}});
 
-  // Marcadores HTML solo para estado de “visitado”, invisibles como iconos grandes.
   for(const l of LANDMARKS){
     const el=document.createElement('div');el.className='poi-hit-marker';el.dataset.poi=l.id;
     new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([l.lng,l.lat])
@@ -363,7 +425,7 @@ function addWorld3D(beforeId){
     getState:()=>({
       lng:player.lng,lat:player.lat,bearing:player.bearing,speedMps:player.speedMps,
       cameraMode:state.cameraMode,season:state.season,treesEnabled:state.treesEnabled,
-      jogSpeedMps:CAMPUS.jogSpeedMps,sprintMultiplier:CAMPUS.sprintMultiplier
+      jogSpeedMps:BASE_SPEED_MPS,sprintMultiplier:CAMPUS.sprintMultiplier
     })
   });
   map.addLayer(layer,beforeId);
@@ -440,7 +502,8 @@ function bindUI(){
 
 function resetPlayer(){
   player.lng=CAMPUS.spawn.lng;player.lat=CAMPUS.spawn.lat;player.bearing=CAMPUS.spawnBearing;
-  player.lastSpeedKmh=0;player.speedMps=0;state.pitchLook=0;
+  player.lastSpeedKmh=0;player.speedMps=0;
+  state.currentSpeed=0;state.moveForward=0;state.moveRight=0;state.turnRate=0;state.pitchLook=0;
   updateMapMarker();setCameraMode('follow',{notifyUser:false});notify(`Reinicio: ${CAMPUS.spawnName}`);
 }
 
@@ -456,18 +519,19 @@ fillReferencePanels();
 
 map.on('load',()=>{
   try{
-    loadingStep(20,'Aplicando relieve métrico…');addTerrain();
-    loadingStep(34,'Preparando fotografía aérea opcional…');addImagery();
-    loadingStep(47,'Extruyendo edificios de cartografía abierta…');const labelsBefore=addBuildings();
-    loadingStep(62,'Calibrando bosque con parcelas ESPOL…');addForest();
-    loadingStep(74,'Añadiendo hitos reales del campus…');addCampusBounds();addLandmarks();
-    loadingStep(86,'Creando avatar y vegetación 3D cercana…');addWorld3D(labelsBefore);
-    loadingStep(94,'Configurando cámaras y controles…');bindUI();setSeason(state.season);updateMapMarker();setCameraMode('follow',{notifyUser:false});updateHUD();
+    loadingStep(18,'Limitando el mundo al Campus ESPOL…');lockMapToCampus();
+    loadingStep(28,'Aplicando relieve métrico…');addTerrain();
+    loadingStep(40,'Preparando fotografía aérea opcional…');addImagery();
+    loadingStep(52,'Extruyendo edificios de cartografía abierta…');const labelsBefore=addBuildings();
+    loadingStep(64,'Calibrando bosque con parcelas ESPOL…');addForest();
+    loadingStep(76,'Ocultando todo lo exterior al campus…');addCampusBounds();addLandmarks();
+    loadingStep(87,'Creando avatar y vegetación 3D cercana…');addWorld3D(labelsBefore);
+    loadingStep(95,'Optimizando movimiento y cámaras…');bindUI();setSeason(state.season);updateMapMarker();setCameraMode('follow',{notifyUser:false});updateHUD();
     loadingStep(100,'ESPOL Builder listo');
     setTimeout(()=>{
       loading.classList.add('hide');requestAnimationFrame(gameLoop);
-      notify('Spawn exterior del Auditorio FIEC · 1 Mapa · 2 Tercera · 3 Primera persona');
-    },550);
+      notify(`ESPOL aislada · base ${Math.round(BASE_SPEED_MPS*3.6)} km/h · Shift ×2.5`);
+    },500);
   }catch(err){
     console.error(err);loadingText.textContent='El mapa base cargó, pero una capa 3D falló. Revisa la consola.';
     setTimeout(()=>{loading.classList.add('hide');try{bindUI()}catch{}updateMapMarker();updateHUD();requestAnimationFrame(gameLoop)},1500);
