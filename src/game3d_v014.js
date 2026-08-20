@@ -1,6 +1,13 @@
 import { createGameWorld as createV013World } from './game3d_v013.js';
 import { auditFoundation, PROJECT } from './project-foundation.js';
 
+function publishAudit(report) {
+  globalThis.__ESPOL_FOUNDATION_REPORT__ = report;
+  if (typeof dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+    dispatchEvent(new CustomEvent('espol:foundation-audit', { detail: report }));
+  }
+}
+
 export async function createGameWorld(options) {
   const world = await createV013World(options);
   const upstreamSetStructures = world.setStructures.bind(world);
@@ -9,7 +16,7 @@ export async function createGameWorld(options) {
     upstreamSetStructures(structures);
     const report = auditFoundation(world, structures);
     world.foundationReport = report;
-    globalThis.__ESPOL_FOUNDATION_REPORT__ = report;
+    publishAudit(report);
 
     if (!report.ok) {
       const message = `Foundation audit failed: ${report.hardErrors.join(', ')}`;
