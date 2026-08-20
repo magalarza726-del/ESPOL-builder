@@ -161,6 +161,62 @@ function pointInPolygon(x, z, poly) {
   return !poly.holes.some(h => pointInRing(x, z, h));
 }
 
+function pointSegmentDistanceSq(ax, az, bx, bz, px, pz) {
+  const vx = bx - ax, vz = bz - az, wx = px - ax, wz = pz - az;
+  const vv = vx * vx + vz * vz;
+  const t = vv > 1e-8 ? clamp((wx * vx + wz * vz) / vv, 0, 1) : 0;
+  const dx = px - (ax + vx * t), dz = pz - (az + vz * t);
+  return dx * dx + dz * dz;
+}
+
+function orient(a, b, c) {
+  return (b.x - a.x) * (c.z - a.z) - (b.z - a.z) * (c.x - a.x);
+}
+
+function segmentsIntersect(a, b, c, d) {
+  const o1 = orient(a, b, c), o2 = orient(a, b, d), o3 = orient(c, d, a), o4 = orient(c, d, b);
+  return ((o1 > 0) !== (o2 > 0)) && ((o3 > 0) !== (o4 > 0));
+}
+
+function segmentSegmentDistanceSq(a, b, c, d) {
+  if (segmentsIntersect(a, b, c, d)) return 0;
+  return Math.min(
+    pointSegmentDistanceSq(a.x, a.z, b.x, b.z, c.x, c.z),
+    pointSegmentDistanceSq(a.x, a.z, b.x, b.z, d.x, d.z),
+    pointSegmentDistanceSq(c.x, c.z, d.x, d.z, a.x, a.z),
+    pointSegmentDistanceSq(c.x, c.z, d.x, d.z, b.x, b.z)
+  );
+}
+
+function segmentAABB(a, b, minX, maxX, minZ, maxZ) {
+  let t0 = 0, t1 = 1;
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const slab = (p, d, mn, mx) => {
+    if (Math.abs(d) < 1e-9) return p >= mn && p <= mx ? [0, 1] : null;
+    let u = (mn - p) / d, v = (mx - p) / d;
+    if (u > v) [u, v] = [v, u];
+    return [u, v];
+  };
+  for (const s of [slab(a.x, dx, minX, maxX), slab(a.z, dz, minZ, maxZ)]) {
+    if (!s) return false;
+    t0 = Math.max(t0, s[0]); t1 = Math.min(t1, s[1]);
+    if (t0 > t1) return false;
+  }
+  return t1 >= 0 && t0 <= 1;
+}
+
+function segmentPolygonBlocked(a, b, poly, radius) {
+  if (pointInPolygon(a.x, a.z, poly) || pointInPolygon(b.x, b.z, poly)) return true;
+  const r2 = radius * radius;
+  for (const ring of [poly.outer, ...poly.holes]) {
+    for (let i = 0; i < ring.length; i++) {
+      const c = ring[i], d = ring[(i + 1) % ring.length];
+      if (segmentSegmentDistanceSq(a, b, c, d) <= r2) return true;
+    }
+  }
+  return false;
+}
+
 function gridInsert(grid, cell, obj) {
   const minX = Math.floor((obj.x - obj.hx) / cell), maxX = Math.floor((obj.x + obj.hx) / cell);
   const minZ = Math.floor((obj.z - obj.hz) / cell), maxZ = Math.floor((obj.z + obj.hz) / cell);
@@ -255,7 +311,7 @@ function installExactBuildings(world, records) {
       geometries.push(geometry);
 
       const box = polygonBounds(poly);
-      const collider = { ...box, height: record.height, base: record.base };
+      const collider = { ...box, polygon: poly, height: record.height, base: record.base };
       if (!pointInPolygon(0, 0, poly)) {
         world.buildingColliders.push(collider);
         gridInsert(world.buildingGrid, world.buildingCellM, collider);
@@ -274,9 +330,22 @@ function installExactBuildings(world, records) {
   world.stats.colliders = world.buildingColliders.length;
 }
 
+function installExactBuildingCollision(world) {
+  world.pathBlockedBuilding = function(a, b, radius) {
+    if (!this.buildingsEnabled) return false;
+    for (const building of this.buildingCandidatesAlong(a.x, a.z, b.x, b.z)) {
+      if (this.verticalOffset > building.height + .6) continue;
+      if (!segmentAABB(a, b, building.minX - radius, building.maxX + radius, building.minZ - radius, building.maxZ + radius)) continue;
+      if (segmentPolygonBlocked(a, b, building.polygon, radius)) return true;
+    }
+    return false;
+  };
+}
+
 export async function createGameWorld(options) {
   const world = await createBaseWorld(options);
   const baseSetStructures = world.setStructures.bind(world);
+  installExactBuildingCollision(world);
 
   world.setStructures = structures => {
     // Let the original engine create roads and reset its groups/collision index.
