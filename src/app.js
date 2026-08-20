@@ -1,4 +1,8 @@
 // Stable entrypoint for GitHub Pages.
+// v0.15 installs the FIMCP parking respawn before project metadata/world modules
+// evaluate CAMPUS-derived constants.
+await import('./spawn-fimcp-v015.js');
+
 // Project metadata/error capture must exist before any GIS/game systems boot.
 const { installProjectMetadata } = await import('./project-foundation.js');
 installProjectMetadata();
