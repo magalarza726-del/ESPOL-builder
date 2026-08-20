@@ -1,147 +1,175 @@
 # ESPOL Builder — Campus Gustavo Galindo jugable 1:1
 
-**v0.7.0 · Forest Density / Collision** — plantilla web del Campus Gustavo Galindo de ESPOL, pensada como `master map` reutilizable para exploración, terror, RPG o shooter y desplegable en GitHub Pages.
+**v0.14.0 · FOUNDATION HARDENING · FIEC VERTICAL SLICE**
 
-La arquitectura mantiene dos motores separados:
+ESPOL Builder es un **master world web de ESPOL**, no un juego específico. El objetivo es construir una plantilla espacial estable, métrica y reutilizable sobre la que luego puedan vivir modos de exploración, terror, RPG o shooter sin duplicar terreno, edificios, bosque ni colisiones.
 
-- **Mapa:** MapLibre GL JS para GIS, zoom, pan, POI y cartografía.
-- **Juego:** Three.js independiente para primera/tercera persona, terreno cacheado, vegetación, infraestructura y colisiones.
+## Prioridad actual
 
-## Novedades v0.7
+La fase v0.14 congela el crecimiento horizontal de funciones. Antes de añadir nuevas mecánicas, el proyecto debe cumplir cinco condiciones:
 
-### Bosque mucho más denso
+1. locomoción estable durante recorridos largos;
+2. una sola superficie de relieve para render y física;
+3. un solo dataset de edificios para Mapa y mundo 3D;
+4. una sola base forestal determinista para render y colisión;
+5. FIEC + Auditorio como **vertical slice** de alta fidelidad y referencia para ampliar el resto del campus.
 
-El modelo anterior representaba muy pocos fustes. La v0.7 usa como referencia estructural las parcelas florísticas de ESPOL y trabaja con **anclas de grupos**:
+Los modos Terror/RPG/Shooter se conservan como *harnesses* de prueba del master world, pero no deben introducir sistemas paralelos del campus.
 
-- 9.000 anclas arbóreas procedurales;
-- cada ancla natural puede representar aproximadamente 8–22 fustes cercanos;
-- 4.200 anclas de sotobosque;
-- hasta ~1.600 árboles completos cercanos en calidad máxima;
-- hasta ~950 masas de dosel a media distancia;
-- adaptación automática de calidad según FPS.
+## Arquitectura vigente
 
-Esto no significa que existan esas coordenadas exactas en el campus. La distribución es una reconstrucción procedural calibrada con publicaciones de ESPOL.
+```text
+GitHub Pages
+    │
+    ├── MapLibre GL JS ── Mapa GIS / navegación / captura vectorial
+    │
+    └── Three.js ──────── mundo jugable 1ª/3ª persona
+             │
+             ├── Terrain Surface ─ una superficie física=visual
+             ├── Building Sync ─── mismas huellas/alturas Mapa↔3D
+             ├── Forest System V2 ─ ForestDatabase + chunks 64 m
+             └── Foundation Audit ─ invariantes antes de declarar READY
+```
 
-El muestreo reciente registró 245 árboles con DAP ≥5 cm en 3.000 m² y una fuerte concentración de individuos jóvenes en clases DAP 5–15 cm. Por eso el generador usa 73 % de individuos juveniles y evita el aspecto anterior de árboles grandes aislados.
+El entrypoint público enruta `./src/game3d.js` hacia `src/game3d_v014.js`. Ese compositor reutiliza v0.13 y añade la auditoría de fundación.
 
-Informe detallado:
+## Vertical slice: FIEC + Auditorio
 
-`docs/ESPOL_FOREST_DENSITY_AND_STRUCTURE.md`
+La zona patrón está declarada en `src/project-foundation.js` y contiene el spawn, Auditorio FIEC, 11A, 11B y 11F.
 
-Investigación botánica general:
+La intención es perfeccionar primero esta zona en:
 
-`docs/ESPOL_VEGETATION_RESEARCH.md`
+- escala y pendientes;
+- huellas y alturas;
+- caminos/aceras;
+- vegetación y claros;
+- colisiones;
+- fachadas y landmarks;
+- rendimiento;
+- comparación visual con referencias reales.
 
-### Distribución espacial
+Sólo después debe repetirse el pipeline en Rectorado, Biblioteca, FIMCP y el resto del campus.
 
-La página de sostenibilidad de ESPOL reporta alrededor de 80 % del campus cubierto por vegetación forestal y alrededor de 3 % por edificaciones. En consecuencia:
+## Forest System V2
 
-- el núcleo académico funciona como un gran claro urbano;
-- la matriz forestal rodea el núcleo de forma mucho más continua;
-- el oeste conserva mayor peso del BVPP;
-- el este no queda artificialmente vacío;
-- dentro de facultades se usa arbolado de campus en grupos pequeños.
+`src/forest-system-v2.js` sustituyó el runtime forestal incremental anterior.
 
-### Composición por altitud
+Principios:
 
-Las parcelas baja, media y alta alimentan pesos distintos. v0.7 amplía el catálogo con especies publicadas en las tablas de IVI, incluyendo entre otras:
+- chunks deterministas de **64×64 m**;
+- IDs persistentes por árbol derivado;
+- una `ForestDatabase` única;
+- histéresis entre LOD cercano y lejano;
+- masa forestal de respaldo cuando el presupuesto de detalle se agota;
+- troncos lejanos simplificados;
+- colliders generados desde los mismos Tree ID detallados que se representan;
+- sin `Math.random()` durante la generación de identidad/posición;
+- caché de chunks para evitar regeneración continua.
 
-- `Pseudalbizzia multiflora`
-- `Guazuma ulmifolia`
-- `Eriotheca ruizii`
-- `Sapindus saponaria`
-- `Cynometra bauhiniifolia`
-- `Myrcia splendens`
-- `Guarea glabra`
-- `Trichilia elegans`
-- `Triplaris cumingiana`
-- `Gustavia angustifolia`
-- `Pseudobombax millei`
+La investigación ecológica sigue sirviendo para densidad, composición, tamaños y estratos; **no se presenta como un censo exacto georreferenciado árbol por árbol**.
 
-La zona alta conserva además un sesgo hacia especies/estratos asociados a mayor humedad alrededor de la quebrada estacional descrita en la investigación.
+## Terreno
 
-## Edificios recuperados
+El relieve parte de tiles Terrarium precargados. `terrain-surface-v012.js` interpola exactamente los mismos triángulos de la malla visible y reemplaza `world.getElevation`, de modo que jugador, vegetación y edificios consultan la misma superficie que se dibuja.
 
-La v0.6 podía iniciar el mundo 3D sin muchos edificios porque hacía una consulta única a los vector tiles después de encuadrar todo ESPOL.
+## Edificios
 
-La v0.7 realiza antes del gameplay un **barrido sectorial a zoom alto**:
+`building-sync-preload.js` captura geometrías vectoriales y `game3d_sync.js` las reutiliza en MapLibre y Three.js.
 
-1. recorre temporalmente una cuadrícula sobre el núcleo del campus;
-2. espera la carga de tiles de cada sector;
-3. extrae `building` y `transportation`;
-4. deduplica geometrías;
-5. convierte edificios y carreteras a `InstancedMesh` locales;
-6. congela MapLibre y empieza gameplay.
+Jerarquía de altura:
 
-Además existen volúmenes de respaldo para FIEC, FIMCP, Biblioteca, Rectorado, terminal, coliseo y postgrado cuando un tile no devuelve una huella utilizable.
+1. `render_height` / `height` del vector;
+2. `levels` / `building:levels`;
+3. niveles documentados de bloques identificables de ESPOL;
+4. fallback explícito cuando no existe información suficiente.
 
-Las formas Three.js siguen siendo volúmenes optimizados. Una fase posterior puede sustituir su malla visual por fachadas más fieles sin modificar ubicación ni colisión.
+La igualdad Mapa↔3D es un objetivo arquitectónico. La exactitud física en metros depende de los datos públicos disponibles y debe validarse edificio por edificio en los landmarks importantes.
 
-## Colisiones
+## Auditoría de fundación
 
-### Edificios
+`src/project-foundation.js` define versión, fase, vertical slice y *quality gates*.
 
-- caja AABB por volumen;
-- índice espacial en celdas de 80 m;
-- sólo se inspeccionan objetos vecinos.
+Después de construir las estructuras, `game3d_v014.js` ejecuta una auditoría que comprueba como mínimo:
 
-### Árboles
+- superficie física de terreno instalada;
+- Forest System V2 instalado;
+- resolver de colisión disponible;
+- renderer disponible;
+- muestras de elevación finitas en FIEC;
+- landmarks contractuales del vertical slice;
+- escala humana del avatar;
+- cantidad de huellas capturadas en la zona patrón.
 
-- colisión circular con troncos cercanos;
-- utiliza la misma distribución determinista que el render de grupos;
-- no recorre todos los árboles del campus.
+El resultado queda disponible en:
 
-### Jugador
+```js
+window.__ESPOL_FOUNDATION_REPORT__
+```
 
-- radio aproximado: 0,38 m;
-- subpasos de movimiento de ~0,75 m para evitar atravesar objetos a alta velocidad;
-- si un movimiento completo colisiona, el sistema intenta deslizar por X o Z antes de detener al jugador.
+Los errores no controlados del navegador se conservan temporalmente en:
+
+```js
+window.__ESPOL_RUNTIME_ERRORS__
+```
+
+Un fallo duro de fundación impide que el mundo se declare listo silenciosamente. Un problema de datos externos puede marcar el reporte como `degraded` sin fingir que la reconstrucción es completa.
 
 ## Rendimiento
 
-La v0.6 confirmó la utilidad de separar MapLibre y Three.js. v0.7 conserva:
+El runtime mantiene:
 
-- materiales `MeshBasicMaterial`;
-- sin luces dinámicas ni sombras;
+- MapLibre separado del loop de gameplay;
+- DEM en memoria;
 - `InstancedMesh`;
-- DEM Terrarium precargado en memoria;
-- terreno en 12 chunks;
-- resolución interna adaptativa;
+- materiales planos;
+- sin sombras dinámicas;
 - LOD adaptativo;
-- profiler de FPS, frametime, draw calls, triángulos, vegetación y chunks.
+- profiler de FPS, frame time, draw calls, triángulos, vegetación y chunks.
 
-La mayor densidad forestal se consigue principalmente con grupos deterministas y masas de dosel, no multiplicando draw calls uno por uno.
-
-## Relieve
-
-`src/game3d.js` precarga los tiles Terrarium de zoom 15 que cubren el área de trabajo. Las consultas de elevación durante gameplay son locales y síncronas.
-
-## Controles
-
-- `W / S`: avanzar / retroceder
-- `A / D`: desplazamiento lateral
-- `Q / E`: girar
-- `Shift`: sprint ×2,5
-- `1`: Mapa
-- `2`: tercera persona
-- `3`: primera persona
-- `R`: reaparecer fuera del Auditorio FIEC
-- arrastrar en gameplay: mirar
+Objetivo actual: **60 FPS**, considerando menos de 45 FPS sostenidos como señal de degradación que debe investigarse antes de subir fidelidad.
 
 ## Escala
 
-Las coordenadas continúan en longitud/latitud y las conversiones locales usan metros. La intención sigue siendo **1 m del mundo ≈ 1 m real** dentro de la aproximación del DEM y la cartografía pública.
+La intención sigue siendo **1 m del mundo ≈ 1 m real**. El avatar está definido a escala humana y el spawn está fuera del Auditorio FIEC.
 
-## Fuentes principales
+## Pruebas y despliegue
 
-- Composición florística y estructura del BVPP, ESPOL: https://www.dspace.espol.edu.ec/handle/123456789/65962
-- Monitoreo de herbáceas, trepadoras y epífitas, ESPOL: https://www.dspace.espol.edu.ec/handle/123456789/10919
-- Sostenibilidad / entorno e infraestructura: https://sostenibilidad.espol.edu.ec/entorno-e-infraestructura
-- Los Gigantes del Bosque Seco: https://www.espol.edu.ec/en/node/9991
-- Reforestación inclusiva en Sendero Mirador: https://www.espol.edu.ec/es/noticias/reforestacion-inclusiva-en-el-bosque-protector-de-la-espol
+Antes de publicar, GitHub Actions ejecuta:
 
-## GitHub Pages
+```bash
+npm run verify
+```
 
-El workflow `.github/workflows/pages.yml` ejecuta `npm run check` antes de publicar. Ese comando valida sintaxis de los módulos JavaScript principales con `node --check`.
+que incluye:
 
-Con Pages configurado para **GitHub Actions**, cada push a `main` vuelve a desplegar el sitio.
+```bash
+npm run check
+npm run test
+```
+
+Los tests cubren invariantes generales, Forest V2, edificio sincronizado, terreno unificado y el contrato v0.14/FIEC.
+
+## Fuentes de ESPOL ya incorporadas
+
+La documentación de investigación se conserva en `docs/`:
+
+- `ESPOL_DATA_SOURCES.md`
+- `ESPOL_VEGETATION_RESEARCH.md`
+- `ESPOL_FOREST_DENSITY_AND_STRUCTURE.md`
+- `BUILDING_SYNC_V0.10.md`
+- `FOREST_SYSTEM_V2.md`
+- auditorías de estabilidad previas
+
+Entre las fuentes utilizadas están publicaciones y páginas institucionales de ESPOL sobre infraestructura, Bosque Protector La Prosperina, composición florística, sotobosque, reforestación y cartografía del campus.
+
+## Regla para próximas versiones
+
+No crear un nuevo sistema paralelo para resolver un bug de uno existente.
+
+Si una mejora necesita terreno, edificios o árboles, debe consumir respectivamente:
+
+- la superficie de terreno existente;
+- el dataset sincronizado de edificios;
+- `ForestDatabase` / Tree ID de Forest System V2.
+
+La siguiente mejora importante debe aumentar la **calidad del vertical slice**, no la cantidad de funciones del juego.
