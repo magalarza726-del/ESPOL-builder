@@ -1,159 +1,147 @@
 # ESPOL Builder — Campus Gustavo Galindo jugable 1:1
 
-**v0.6.0 · Hybrid Performance** — plantilla web del Campus Gustavo Galindo de ESPOL, pensada como `master map` reutilizable para exploración, terror, RPG o shooter y desplegable en GitHub Pages.
+**v0.7.0 · Forest Density / Collision** — plantilla web del Campus Gustavo Galindo de ESPOL, pensada como `master map` reutilizable para exploración, terror, RPG o shooter y desplegable en GitHub Pages.
 
-La prioridad de esta versión es que el campus pueda jugarse con mucha más fluidez sin perder la escala 1:1 ni la investigación ecológica acumulada.
+La arquitectura mantiene dos motores separados:
 
-## Cambio arquitectónico principal
+- **Mapa:** MapLibre GL JS para GIS, zoom, pan, POI y cartografía.
+- **Juego:** Three.js independiente para primera/tercera persona, terreno cacheado, vegetación, infraestructura y colisiones.
 
-Hasta v0.5, MapLibre hacía simultáneamente de mapa GIS y de motor de cámara del videojuego. Eso obligaba a recalcular/reproyectar terreno, vector tiles, edificios y capas cartográficas cada vez que el personaje se movía.
+## Novedades v0.7
 
-Desde v0.6 hay **dos motores separados**:
+### Bosque mucho más denso
 
-### Mapa
+El modelo anterior representaba muy pocos fustes. La v0.7 usa como referencia estructural las parcelas florísticas de ESPOL y trabaja con **anclas de grupos**:
 
-- MapLibre GL JS.
-- Terreno, edificios, nombres, POI y navegación cartográfica.
-- Zoom, pan y orientación dentro de los límites de ESPOL.
-- No se mueve ni se repinta como cámara de videojuego cuando estás en 1ª/3ª persona.
+- 9.000 anclas arbóreas procedurales;
+- cada ancla natural puede representar aproximadamente 8–22 fustes cercanos;
+- 4.200 anclas de sotobosque;
+- hasta ~1.600 árboles completos cercanos en calidad máxima;
+- hasta ~950 masas de dosel a media distancia;
+- adaptación automática de calidad según FPS.
 
-### Primera y tercera persona
+Esto no significa que existan esas coordenadas exactas en el campus. La distribución es una reconstrucción procedural calibrada con publicaciones de ESPOL.
 
-- Three.js independiente en `#game3d`.
-- Cámara de videojuego real.
-- Materiales planos (`MeshBasicMaterial`), sin luces dinámicas, sombras ni texturas pesadas.
-- Terreno, infraestructura y vegetación renderizados como datos locales métricos.
+El muestreo reciente registró 245 árboles con DAP ≥5 cm en 3.000 m² y una fuerte concentración de individuos jóvenes en clases DAP 5–15 cm. Por eso el generador usa 73 % de individuos juveniles y evita el aspecto anterior de árboles grandes aislados.
 
-Esta separación elimina el `map.jumpTo()` que antes se ejecutaba continuamente durante gameplay.
+Informe detallado:
 
-## Relieve: Terrarium cacheado
+`docs/ESPOL_FOREST_DENSITY_AND_STRUCTURE.md`
 
-`src/game3d.js` contiene un lector propio de Mapzen/AWS Terrarium.
-
-Al iniciar:
-
-1. calcula qué tiles de zoom 15 cubren el bounding box de ESPOL;
-2. descarga únicamente esos tiles;
-3. decodifica cada píxel a elevación en metros mediante el formato Terrarium;
-4. conserva los datos en memoria;
-5. todas las consultas posteriores de altura son locales y síncronas.
-
-El personaje, árboles, carreteras y edificios dejan así de depender de `MapLibre.queryTerrainElevation()` durante gameplay.
-
-El terreno jugable se genera en **12 chunks principales (4 × 3)**, cada uno con malla low-poly. Three.js aplica frustum culling y el motor desactiva chunks suficientemente alejados.
-
-## Infraestructura local
-
-Durante la carga inicial, mientras MapLibre ya tiene visibles los tiles de ESPOL, v0.6 extrae información de las capas abiertas:
-
-- `building` → cajas 3D instanciadas;
-- `transportation` → tramos viales instanciados.
-
-Después de esa conversión, el mundo Three.js trabaja con esos datos locales y MapLibre queda pausado durante gameplay.
-
-Las cajas son una aproximación optimizada de las huellas originales; no sustituyen todavía el modelado arquitectónico fino de FIEC, FIMCP, Rectorado, CIB, etc.
-
-## Vegetación ESPOL
-
-Se conserva el modelo ecológico desarrollado en v0.5:
-
-- árboles;
-- arbustos;
-- herbáceas;
-- trepadoras/lianas;
-- epífitas.
-
-La selección de especies se apoya en investigaciones del Bosque y Vegetación Protector Prosperina, parcelas florísticas baja/media/alta, estudios de herbáceas/trepadoras/epífitas y documentación de restauración del bosque.
-
-Consulta el informe detallado en:
+Investigación botánica general:
 
 `docs/ESPOL_VEGETATION_RESEARCH.md`
 
-### LOD adaptativo
+### Distribución espacial
 
-La vegetación completa existe como base procedural, pero sólo una fracción se materializa en 3D alrededor del jugador.
+La página de sostenibilidad de ESPOL reporta alrededor de 80 % del campus cubierto por vegetación forestal y alrededor de 3 % por edificaciones. En consecuencia:
 
-El motor usa:
+- el núcleo académico funciona como un gran claro urbano;
+- la matriz forestal rodea el núcleo de forma mucho más continua;
+- el oeste conserva mayor peso del BVPP;
+- el este no queda artificialmente vacío;
+- dentro de facultades se usa arbolado de campus en grupos pequeños.
 
-- índice espacial por celdas;
-- radio distinto para árboles y sotobosque;
+### Composición por altitud
+
+Las parcelas baja, media y alta alimentan pesos distintos. v0.7 amplía el catálogo con especies publicadas en las tablas de IVI, incluyendo entre otras:
+
+- `Pseudalbizzia multiflora`
+- `Guazuma ulmifolia`
+- `Eriotheca ruizii`
+- `Sapindus saponaria`
+- `Cynometra bauhiniifolia`
+- `Myrcia splendens`
+- `Guarea glabra`
+- `Trichilia elegans`
+- `Triplaris cumingiana`
+- `Gustavia angustifolia`
+- `Pseudobombax millei`
+
+La zona alta conserva además un sesgo hacia especies/estratos asociados a mayor humedad alrededor de la quebrada estacional descrita en la investigación.
+
+## Edificios recuperados
+
+La v0.6 podía iniciar el mundo 3D sin muchos edificios porque hacía una consulta única a los vector tiles después de encuadrar todo ESPOL.
+
+La v0.7 realiza antes del gameplay un **barrido sectorial a zoom alto**:
+
+1. recorre temporalmente una cuadrícula sobre el núcleo del campus;
+2. espera la carga de tiles de cada sector;
+3. extrae `building` y `transportation`;
+4. deduplica geometrías;
+5. convierte edificios y carreteras a `InstancedMesh` locales;
+6. congela MapLibre y empieza gameplay.
+
+Además existen volúmenes de respaldo para FIEC, FIMCP, Biblioteca, Rectorado, terminal, coliseo y postgrado cuando un tile no devuelve una huella utilizable.
+
+Las formas Three.js siguen siendo volúmenes optimizados. Una fase posterior puede sustituir su malla visual por fachadas más fieles sin modificar ubicación ni colisión.
+
+## Colisiones
+
+### Edificios
+
+- caja AABB por volumen;
+- índice espacial en celdas de 80 m;
+- sólo se inspeccionan objetos vecinos.
+
+### Árboles
+
+- colisión circular con troncos cercanos;
+- utiliza la misma distribución determinista que el render de grupos;
+- no recorre todos los árboles del campus.
+
+### Jugador
+
+- radio aproximado: 0,38 m;
+- subpasos de movimiento de ~0,75 m para evitar atravesar objetos a alta velocidad;
+- si un movimiento completo colisiona, el sistema intenta deslizar por X o Z antes de detener al jugador.
+
+## Rendimiento
+
+La v0.6 confirmó la utilidad de separar MapLibre y Three.js. v0.7 conserva:
+
+- materiales `MeshBasicMaterial`;
+- sin luces dinámicas ni sombras;
 - `InstancedMesh`;
-- geometrías low-poly;
-- materiales planos;
-- presupuesto dinámico según hardware y FPS;
-- reducción automática de resolución interna y densidad si cae el rendimiento.
+- DEM Terrarium precargado en memoria;
+- terreno en 12 chunks;
+- resolución interna adaptativa;
+- LOD adaptativo;
+- profiler de FPS, frametime, draw calls, triángulos, vegetación y chunks.
 
-## Profiler integrado
+La mayor densidad forestal se consigue principalmente con grupos deterministas y masas de dosel, no multiplicando draw calls uno por uno.
 
-La interfaz muestra en tiempo real:
+## Relieve
 
-- FPS;
-- frametime;
-- draw calls;
-- triángulos;
-- instancias vegetales visibles;
-- chunks activos;
-- porcentaje de calidad dinámica.
-
-El objetivo es poder optimizar con mediciones reales en la computadora del usuario, no sólo por intuición.
-
-## Escala y movimiento
-
-- 1 unidad métrica del mundo ≈ 1 metro real.
-- Spawn: exterior aproximado del Auditorio FIEC.
-- Avatar: ~1,80 m.
-- Ojos en primera persona: 1,68 m.
-- Velocidad base actual: **7,8 m/s ≈ 28,1 km/h**.
-- `Shift`: multiplicador **×2,5**, máximo aproximado **19,5 m/s ≈ 70,2 km/h**.
-- El movimiento utiliza aceleración, frenado, suavizado direccional y subpasos para reducir saltos por variaciones de FPS.
+`src/game3d.js` precarga los tiles Terrarium de zoom 15 que cubren el área de trabajo. Las consultas de elevación durante gameplay son locales y síncronas.
 
 ## Controles
 
-- `W/S`: avanzar / retroceder
-- `A/D`: desplazamiento lateral
-- `Q/E` o flechas izquierda/derecha: girar
+- `W / S`: avanzar / retroceder
+- `A / D`: desplazamiento lateral
+- `Q / E`: girar
 - `Shift`: sprint ×2,5
-- `R`: reaparecer junto al Auditorio FIEC
-- `1`: Mapa GIS
-- `2`: Tercera persona
-- `3`: Primera persona
-- En Mapa: rueda + arrastre
-- En gameplay: arrastre del ratón para orientar la cámara/personaje
+- `1`: Mapa
+- `2`: tercera persona
+- `3`: primera persona
+- `R`: reaparecer fuera del Auditorio FIEC
+- arrastrar en gameplay: mirar
+
+## Escala
+
+Las coordenadas continúan en longitud/latitud y las conversiones locales usan metros. La intención sigue siendo **1 m del mundo ≈ 1 m real** dentro de la aproximación del DEM y la cartografía pública.
 
 ## Fuentes principales
 
-La documentación ampliada de fuentes está en `docs/`.
-
-Entre las fuentes utilizadas están:
-
-- ESPOL — Entorno e infraestructura: https://sostenibilidad.espol.edu.ec/entorno-e-infraestructura
-- Composición florística y estructura del BVPP: https://www.dspace.espol.edu.ec/handle/123456789/65962
-- Herbáceas, trepadoras y epífitas del Bosque Protector Prosperina: https://www.dspace.espol.edu.ec/handle/123456789/10919
-- Actualización del plan de manejo del Bosque Protector: https://www.dspace.espol.edu.ec/handle/123456789/56033
+- Composición florística y estructura del BVPP, ESPOL: https://www.dspace.espol.edu.ec/handle/123456789/65962
+- Monitoreo de herbáceas, trepadoras y epífitas, ESPOL: https://www.dspace.espol.edu.ec/handle/123456789/10919
+- Sostenibilidad / entorno e infraestructura: https://sostenibilidad.espol.edu.ec/entorno-e-infraestructura
 - Los Gigantes del Bosque Seco: https://www.espol.edu.ec/en/node/9991
-- Cartografía base: OpenStreetMap / OpenFreeMap
-- Elevación: Mapzen Terrain Tiles / AWS Open Data, formato Terrarium
+- Reforestación inclusiva en Sendero Mirador: https://www.espol.edu.ec/es/noticias/reforestacion-inclusiva-en-el-bosque-protector-de-la-espol
 
-Los individuos vegetales generados son una **reconstrucción procedural calibrada**, no un inventario georreferenciado árbol por árbol.
+## GitHub Pages
 
-## Validación y GitHub Pages
+El workflow `.github/workflows/pages.yml` ejecuta `npm run check` antes de publicar. Ese comando valida sintaxis de los módulos JavaScript principales con `node --check`.
 
-El repositorio incluye `package.json` con:
-
-```bash
-npm run check
-```
-
-El workflow de GitHub Pages ejecuta esta validación sintáctica antes de publicar.
-
-`.github/workflows/pages.yml` despliega automáticamente desde `main` cuando GitHub Pages está configurado para usar **GitHub Actions**.
-
-## Próximos pasos
-
-La siguiente mejora de fidelidad ya no debería ser aumentar indiscriminadamente la cantidad de polígonos. El mejor retorno sería:
-
-1. guardar en el repositorio un extracto local definitivo de carreteras/edificios de ESPOL para no depender de OpenFreeMap durante arranque;
-2. modelar fachadas icónicas con geometría low-poly específica;
-3. añadir un editor de correcciones in-game;
-4. calibrar el auto-LOD con mediciones del profiler en distintos PCs y móviles;
-5. incorporar tracks GPS reales de senderos del BVPP cuando estén disponibles.
+Con Pages configurado para **GitHub Actions**, cada push a `main` vuelve a desplegar el sitio.
