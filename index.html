@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Plantilla jugable 1:1 del Campus Gustavo Galindo: relieve métrico, edificios cartográficos, bosque seco calibrado y cámaras de mapa/tercera/primera persona." />
+  <meta name="description" content="Plantilla jugable 1:1 del Campus Gustavo Galindo con vegetación del Bosque Protector Prosperina, materiales planos y LOD optimizado para GitHub Pages." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
@@ -28,16 +28,16 @@
     <div class="loader-card">
       <div class="loader-mark">EB</div>
       <h1>ESPOL Builder</h1>
-      <p id="loadingText">Cargando terreno 1:1…</p>
+      <p id="loadingText">Cargando ESPOL 1:1…</p>
       <div class="bar"><span id="loadingBar"></span></div>
-      <small>DEM real + cartografía abierta + investigación institucional ESPOL</small>
+      <small>DEM real + materiales planos + vegetación ESPOL con LOD adaptativo</small>
     </div>
   </div>
 
   <header class="topbar glass">
     <div>
       <strong>ESPOL BUILDER</strong>
-      <span class="badge">v0.4.0 · CAMPUS ONLY · GEO 1:1</span>
+      <span class="badge">v0.5.0 · VEGETATION · FLAT LOD</span>
     </div>
     <div class="top-actions">
       <button id="btnOverview" title="Mapa de ESPOL (1)">Mapa</button>
@@ -74,18 +74,18 @@
     </div>
 
     <div class="control-row">
-      <label><input id="terrainToggle" type="checkbox" checked> Relieve 3D real · 1× vertical</label>
-      <label><input id="buildingsToggle" type="checkbox" checked> Edificios 3D OSM/OpenFreeMap</label>
-      <label><input id="treesToggle" type="checkbox" checked> Bosque + árboles 3D cercanos</label>
-      <label><input id="imageryToggle" type="checkbox" checked> Foto aérea en 1ª/3ª persona</label>
+      <label><input id="terrainToggle" type="checkbox" checked> Relieve real · sombreado ligero</label>
+      <label><input id="buildingsToggle" type="checkbox" checked> Edificios 3D · material plano</label>
+      <label><input id="treesToggle" type="checkbox" checked> Vegetación ESPOL · árboles + sotobosque LOD</label>
+      <label><input id="imageryToggle" type="checkbox"> Foto aérea opcional · mayor carga GPU</label>
       <label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label>
       <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label>
     </div>
 
     <div class="season-card">
-      <div><span>Estado del bosque</span><b id="seasonLabel">Seca</b></div>
+      <div><span>Estado estacional del bosque</span><b id="seasonLabel">Seca</b></div>
       <input id="season" type="range" min="0" max="100" value="25" />
-      <div class="season-scale"><span>más seco</span><span>más verde</span></div>
+      <div class="season-scale"><span>seca / semideciduo</span><span>lluviosa / rebrote</span></div>
     </div>
 
     <div class="mode-card">
@@ -99,14 +99,20 @@
     </div>
 
     <div class="fact-strip">
-      <div><b>80%</b><span>vegetación forestal</span></div>
-      <div><b>28.1</b><span>km/h velocidad base</span></div>
+      <div><b>5</b><span>estratos/hábitos vegetales</span></div>
+      <div><b>80%</b><span>cobertura forestal reportada</span></div>
       <div><b>1:1</b><span>escala métrica</span></div>
     </div>
 
     <details open>
-      <summary>Qué cambió en v0.4</summary>
-      <p class="fineprint">Movimiento con aceleración, frenado y dirección suavizados; velocidad base triplicada a 7,8 m/s; sprint Shift ×2,5; integración por subpasos para evitar saltos por FPS; cámara y zoom confinados al campus; el exterior del área ESPOL queda oculto por una máscara permanente.</p>
+      <summary>Qué cambió en v0.5</summary>
+      <p class="fineprint">La versión se concentra en vegetación y rendimiento: materiales planos sin texturas ni luces dinámicas, antialias 3D desactivado, LOD adaptativo según hardware, índice espacial por celdas, menos geometría lejana y sotobosque diferenciado en arbustos, herbáceas, trepadoras y epífitas. La foto aérea queda apagada por defecto para mantener mayor fluidez.</p>
+    </details>
+
+    <details>
+      <summary>Vegetación investigada</summary>
+      <p class="fineprint">La capa arbórea se calibra con parcelas ESPOL recientes. El sotobosque usa además el inventario de herbáceas, trepadoras y epífitas de la zona alta del Bosque Protector Prosperina. La estación modifica pérdida de follaje y presencia visual del estrato herbáceo.</p>
+      <div id="speciesList" class="species-list"></div>
     </details>
 
     <details>
@@ -115,14 +121,9 @@
     </details>
 
     <details>
-      <summary>Especies incorporadas</summary>
-      <div id="speciesList" class="species-list"></div>
-    </details>
-
-    <details>
       <summary>Fidelidad y límites</summary>
-      <p class="fineprint">La topografía y el desplazamiento trabajan en metros. Las huellas de edificios y vías dependen de cartografía abierta. Los bloques/funciones se contrastan con páginas oficiales de ESPOL. Los árboles individuales son procedurales; las parcelas de investigación calibran especies y estructura, no posiciones árbol-por-árbol.</p>
-      <a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a>
+      <p class="fineprint">Las especies, hábitos y tendencias ecológicas proceden de documentación ESPOL, pero cada individuo procedural no representa una coordenada botánica censada. A distancia se dibuja masa vegetal; sólo alrededor del jugador se materializan plantas 3D. Es la combinación que mantiene identidad visual sin convertir Pages en una prueba de estrés.</p>
+      <a class="source-link" href="./docs/ESPOL_VEGETATION_RESEARCH.md" target="_blank" rel="noopener">Ver investigación de vegetación</a>
     </details>
   </aside>
 
