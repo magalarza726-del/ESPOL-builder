@@ -12,8 +12,6 @@ export const PROJECT = Object.freeze({
 export const VERTICAL_SLICE = Object.freeze({
   id: 'fiec-auditorio',
   label: 'FIEC + Auditorio',
-  // Zona patrón: suficientemente pequeña para validar fidelidad y suficientemente
-  // grande para incluir 11A/Auditorio y bloques inmediatos sin reconstruir todo ESPOL.
   bounds: Object.freeze({
     west: -79.96935,
     east: -79.96585,
@@ -103,7 +101,7 @@ export function auditFoundation(world, structures = {}) {
     hardErrors.push('avatar-scale-invalid');
   }
 
-  const report = Object.freeze({
+  return Object.freeze({
     version: PROJECT.version,
     phase: PROJECT.codename,
     slice: VERTICAL_SLICE.id,
@@ -114,7 +112,6 @@ export function auditFoundation(world, structures = {}) {
     metrics: Object.freeze(metrics),
     generatedAt: new Date().toISOString()
   });
-  return report;
 }
 
 export function installProjectMetadata() {
@@ -133,4 +130,30 @@ export function installProjectMetadata() {
   };
   addEventListener('error', event => remember('error', event.error || event.message));
   addEventListener('unhandledrejection', event => remember('unhandledrejection', event.reason));
+
+  addEventListener('espol:foundation-audit', event => {
+    const report = event.detail;
+    const state = !report?.ok ? 'failed' : report.degraded ? 'degraded' : 'ok';
+    document.body.dataset.foundationState = state;
+    if (badge) {
+      badge.dataset.foundationState = state;
+      badge.title = report?.warnings?.length
+        ? `Foundation: ${state} · ${report.warnings.join(', ')}`
+        : `Foundation: ${state}`;
+    }
+  });
+
+  // Compatibility bridge: runtime.js predates centralized project metadata and
+  // still owns one startup toast. Keep user-facing version text coherent without
+  // creating a second runtime or mutating world state.
+  const toast = document.querySelector('#toast');
+  if (toast && typeof MutationObserver !== 'undefined') {
+    const normalizeToastVersion = () => {
+      const text = toast.textContent || '';
+      if (/^v0\.\d+\.\d+/.test(text) && text.includes('runtime estabilizado') && !text.startsWith(PROJECT.version)) {
+        toast.textContent = text.replace(/^v0\.\d+\.\d+/, PROJECT.version);
+      }
+    };
+    new MutationObserver(normalizeToastVersion).observe(toast, { childList: true, characterData: true, subtree: true });
+  }
 }
