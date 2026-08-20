@@ -30,6 +30,14 @@ if (!LANDMARKS.some(item => item.id === FIMCP_PARKING_SPAWN.id)) {
   });
 }
 
+// runtime.js still derives the three progress targets from LANDMARKS.slice(0,3).
+// Keep one shared landmark array, but make the active photographic reconstruction
+// the first objective instead of forcing another progress subsystem.
+const priorityIds = ['aud-fimcp', 'fimcp-parking', 'fimcp-24c'];
+const prioritized = priorityIds.map(id => LANDMARKS.find(item => item.id === id)).filter(Boolean);
+const remainder = LANDMARKS.filter(item => !priorityIds.includes(item.id));
+LANDMARKS.splice(0, LANDMARKS.length, ...prioritized, ...remainder);
+
 export function installFIMCPSpawn() {
   return FIMCP_PARKING_SPAWN;
 }
