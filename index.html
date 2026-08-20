@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Master world jugable 1:1 de ESPOL. v0.14 prioriza estabilidad, fidelidad y un vertical slice FIEC/Auditorio antes de ampliar gameplay." />
+  <meta name="description" content="Master world jugable 1:1 de ESPOL. v0.15 incorpora la primera reconstrucción fotográfica de campo de FIMCP usando 100 vistas secuenciales." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
@@ -22,12 +22,12 @@
     <div class="loader-card">
       <div class="loader-mark">EB</div><h1>ESPOL Builder</h1>
       <p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div>
-      <small>Terreno físico=visual · edificios Mapa=3D · Forest System V2 · auditoría de integridad</small>
+      <small>Terreno físico=visual · edificios Mapa=3D · Forest System V2 · FIMCP 100 vistas</small>
     </div>
   </div>
 
   <header class="topbar glass">
-    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.14.0 · FOUNDATION HARDENING · FIEC VERTICAL SLICE</span></div>
+    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.15.0 · FIMCP PHOTO SURVEY · 100 VISTAS</span></div>
     <div class="top-actions">
       <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
       <button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button>
@@ -43,7 +43,7 @@
       <div><span>Rumbo</span><b id="bearing">0°</b></div><div><span>Vista</span><b id="viewMode">3ª persona</b></div>
     </div>
     <div class="coords"><span>Posición</span><b id="coords">—</b></div>
-    <div class="objective"><span>Vertical slice</span><b id="objective">Valida FIEC + Auditorio sin bugs de terreno, edificio o bosque</b><div id="progressDots" class="progress-dots"></div></div>
+    <div class="objective"><span>Reconstrucción activa</span><b id="objective">Valida FIMCP: Auditorio, parqueadero, LEMAT, corredores, patios y servicios</b><div id="progressDots" class="progress-dots"></div></div>
   </section>
 
   <section class="perf-panel glass" id="perfPanel" aria-label="Profiler de rendimiento">
@@ -66,18 +66,18 @@
     </div>
 
     <div class="season-card"><div><span>Estado estacional del bosque</span><b id="seasonLabel">Seca</b></div><input id="season" type="range" min="0" max="100" value="25" /><div class="season-scale"><span>seca / semideciduo</span><span>lluviosa / rebrote</span></div></div>
-    <div class="mode-card"><span>Plantilla de prueba</span><select id="gameMode"><option value="explore">Exploración</option><option value="horror">Terror nocturno</option><option value="rpg">RPG</option><option value="shooter">Shooter sandbox</option></select><small id="modeActionHint">Los modos se conservan como pruebas del master world; v0.14 congela nuevas mecánicas.</small></div>
+    <div class="mode-card"><span>Plantilla de prueba</span><select id="gameMode"><option value="explore">Exploración</option><option value="horror">Terror nocturno</option><option value="rpg">RPG</option><option value="shooter">Shooter sandbox</option></select><small id="modeActionHint">Los modos siguen siendo pruebas del master world; v0.15 prioriza la reconstrucción de FIMCP.</small></div>
 
-    <div class="fact-strip"><div><b>FIEC</b><span>zona patrón</span></div><div><b>60</b><span>FPS objetivo</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
+    <div class="fact-strip"><div><b>FIMCP</b><span>slice fotográfico</span></div><div><b>100</b><span>vistas de campo</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
 
-    <details open><summary>Objetivo de v0.14</summary><p class="fineprint">ESPOL Builder se trata primero como motor/master world del campus. Se congelan funciones nuevas y se priorizan cinco criterios: locomoción estable, terreno físico=visual, edificios Mapa=3D, Forest System V2 sin árboles invisibles y fidelidad de FIEC/Auditorio como vertical slice. El arranque ejecuta una auditoría de estos invariantes y expone el reporte en <code>window.__ESPOL_FOUNDATION_REPORT__</code>.</p></details>
+    <details open><summary>Objetivo de v0.15</summary><p class="fineprint">FIMCP es la primera zona reconstruida usando un recorrido fotográfico de campo completo. Las huellas y alturas siguen ancladas al GIS/documentación; las 100 vistas gobiernan fachadas, estacionamientos, LEMAT, corredores, patio, zonas técnicas y borde de transporte. El respawn se ubica en el parqueadero frontal documentado por FIMCP_06–09.</p></details>
     <details><summary>Vegetación investigada</summary><p class="fineprint">La estructura arbórea se calibra con parcelas baja, media y alta de ESPOL; el sotobosque incorpora arbustos, herbáceas, trepadoras y epífitas. La distribución sigue siendo reconstrucción procedural, no un censo georreferenciado árbol por árbol.</p><div id="speciesList" class="species-list"></div></details>
     <details><summary>Edificios documentados</summary><div id="buildingList" class="building-list"></div></details>
-    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera/tercera persona usan Three.js. Ambos comparten huellas de edificios; el terreno visible alimenta la física; el bosque usa una única ForestDatabase determinista por chunks. Los modos Terror/RPG/Shooter son harnesses de prueba y no deben crear sistemas paralelos del mundo.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Arquitectura, calidad y fuentes</a></details>
+    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera/tercera persona usan Three.js. Ambos comparten huellas de edificios; el terreno visible alimenta la física; el bosque usa una única ForestDatabase determinista por chunks. FIMCP añade detalle fotográfico sobre esas mismas masas sincronizadas, sin cargar las fotos pesadas en runtime.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Arquitectura, calidad y fuentes</a></details>
   </aside>
 
   <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
-  <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> salto / jetpack</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×5</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIEC</span><span><kbd>F</kbd> linterna (Terror)</span><span class="fp-help">Shooter: clic = disparar</span></div>
+  <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> salto / jetpack</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×5</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIMCP</span><span><kbd>F</kbd> linterna (Terror)</span><span class="fp-help">Shooter: clic = disparar</span></div>
   <div id="toast" class="toast glass" aria-live="polite"></div>
   <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
 
