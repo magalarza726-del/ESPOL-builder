@@ -5,42 +5,38 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Plantilla jugable 1:1 del Campus Gustavo Galindo con vegetación del Bosque Protector Prosperina, materiales planos y LOD optimizado para GitHub Pages." />
+  <meta name="description" content="Plantilla jugable 1:1 de ESPOL con Mapa GIS separado del motor Three.js, relieve Terrarium precalculado, vegetación LOD y materiales planos." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
-  <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="./assets/styles.css" />
   <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"
-      }
-    }
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"}}
   </script>
 </head>
-<body>
-  <div id="map" aria-label="Mundo 3D de ESPOL"></div>
+<body class="game-mode">
+  <div id="map" aria-label="Mapa GIS de ESPOL"></div>
+  <canvas id="game3d" aria-label="Mundo jugable 3D de ESPOL"></canvas>
 
   <div id="loading" class="loading-screen">
     <div class="loader-card">
       <div class="loader-mark">EB</div>
       <h1>ESPOL Builder</h1>
-      <p id="loadingText">Cargando ESPOL 1:1…</p>
+      <p id="loadingText">Preparando motor híbrido…</p>
       <div class="bar"><span id="loadingBar"></span></div>
-      <small>DEM real + materiales planos + vegetación ESPOL con LOD adaptativo</small>
+      <small>Mapa GIS separado · Terrarium cacheado · Three.js · vegetación LOD</small>
     </div>
   </div>
 
   <header class="topbar glass">
     <div>
       <strong>ESPOL BUILDER</strong>
-      <span class="badge">v0.5.0 · VEGETATION · FLAT LOD</span>
+      <span class="badge">v0.6.0 · HYBRID PERFORMANCE</span>
     </div>
     <div class="top-actions">
-      <button id="btnOverview" title="Mapa de ESPOL (1)">Mapa</button>
+      <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
       <button id="btnFollow" class="active" title="Tercera persona (2)">3ª persona</button>
       <button id="btnFirstPerson" title="Primera persona (3)">1ª persona</button>
       <button id="btnFullscreen" title="Pantalla completa">⛶</button>
@@ -64,20 +60,28 @@
     </div>
   </section>
 
+  <section class="perf-panel glass" id="perfPanel" aria-label="Profiler de rendimiento">
+    <div class="perf-head"><b>PERFORMANCE</b><span>auto LOD</span></div>
+    <div><span>FPS</span><b id="perfFps">—</b></div>
+    <div><span>Frame</span><b id="perfMs">—</b></div>
+    <div><span>Draw calls</span><b id="perfDraws">—</b></div>
+    <div><span>Triángulos</span><b id="perfTris">—</b></div>
+    <div><span>Vegetación</span><b id="perfVeg">—</b></div>
+    <div><span>Chunks</span><b id="perfChunks">—</b></div>
+    <div><span>Calidad</span><b id="perfQuality">—</b></div>
+  </section>
+
   <aside class="panel glass" id="panel">
     <div class="panel-head">
-      <div>
-        <small>CAPAS DEL MUNDO</small>
-        <h2>Campus Gustavo Galindo</h2>
-      </div>
+      <div><small>CAPAS DEL MUNDO</small><h2>Campus Gustavo Galindo</h2></div>
       <button id="panelToggle" aria-label="Ocultar panel">×</button>
     </div>
 
     <div class="control-row">
-      <label><input id="terrainToggle" type="checkbox" checked> Relieve real · sombreado ligero</label>
-      <label><input id="buildingsToggle" type="checkbox" checked> Edificios 3D · material plano</label>
-      <label><input id="treesToggle" type="checkbox" checked> Vegetación ESPOL · árboles + sotobosque LOD</label>
-      <label><input id="imageryToggle" type="checkbox"> Foto aérea opcional · mayor carga GPU</label>
+      <label><input id="terrainToggle" type="checkbox" checked> Relieve real · precalculado para gameplay</label>
+      <label><input id="buildingsToggle" type="checkbox" checked> Infraestructura · instancias planas</label>
+      <label><input id="treesToggle" type="checkbox" checked> Vegetación ESPOL · LOD adaptativo</label>
+      <label><input id="imageryToggle" type="checkbox"> Foto aérea sólo en Mapa GIS</label>
       <label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label>
       <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label>
     </div>
@@ -99,19 +103,19 @@
     </div>
 
     <div class="fact-strip">
-      <div><b>5</b><span>estratos/hábitos vegetales</span></div>
-      <div><b>80%</b><span>cobertura forestal reportada</span></div>
+      <div><b>2</b><span>motores separados</span></div>
+      <div><b>12±</b><span>tiles DEM cacheados</span></div>
       <div><b>1:1</b><span>escala métrica</span></div>
     </div>
 
     <details open>
-      <summary>Qué cambió en v0.5</summary>
-      <p class="fineprint">La versión se concentra en vegetación y rendimiento: materiales planos sin texturas ni luces dinámicas, antialias 3D desactivado, LOD adaptativo según hardware, índice espacial por celdas, menos geometría lejana y sotobosque diferenciado en arbustos, herbáceas, trepadoras y epífitas. La foto aérea queda apagada por defecto para mantener mayor fluidez.</p>
+      <summary>Qué cambió en v0.6</summary>
+      <p class="fineprint">MapLibre ya no mueve la cámara durante gameplay. El botón Mapa usa el GIS; 1ª/3ª persona usan un canvas Three.js independiente. El DEM Terrarium de ESPOL se descarga una vez y se consulta en memoria. El terreno se divide en chunks, edificios y carreteras se convierten a instancias locales, y la vegetación ajusta automáticamente su presupuesto si bajan los FPS.</p>
     </details>
 
     <details>
       <summary>Vegetación investigada</summary>
-      <p class="fineprint">La capa arbórea se calibra con parcelas ESPOL recientes. El sotobosque usa además el inventario de herbáceas, trepadoras y epífitas de la zona alta del Bosque Protector Prosperina. La estación modifica pérdida de follaje y presencia visual del estrato herbáceo.</p>
+      <p class="fineprint">Árboles, arbustos, herbáceas, trepadoras y epífitas siguen calibrados con los estudios del Bosque Protector Prosperina. En gameplay sólo se materializa el entorno cercano; el resto no consume geometría 3D.</p>
       <div id="speciesList" class="species-list"></div>
     </details>
 
@@ -121,9 +125,9 @@
     </details>
 
     <details>
-      <summary>Fidelidad y límites</summary>
-      <p class="fineprint">Las especies, hábitos y tendencias ecológicas proceden de documentación ESPOL, pero cada individuo procedural no representa una coordenada botánica censada. A distancia se dibuja masa vegetal; sólo alrededor del jugador se materializan plantas 3D. Es la combinación que mantiene identidad visual sin convertir Pages en una prueba de estrés.</p>
-      <a class="source-link" href="./docs/ESPOL_VEGETATION_RESEARCH.md" target="_blank" rel="noopener">Ver investigación de vegetación</a>
+      <summary>Arquitectura de rendimiento</summary>
+      <p class="fineprint">El profiler muestra FPS, frametime, draw calls, triángulos, instancias vegetales y chunks activos. La calidad dinámica reduce radio y cantidad de vegetación y resolución interna antes de tocar la escala física del campus.</p>
+      <a class="source-link" href="./README.md" target="_blank" rel="noopener">Metodología y fuentes</a>
     </details>
   </aside>
 
@@ -134,10 +138,10 @@
     <span><kbd>WASD</kbd> mover</span>
     <span><kbd>Q/E</kbd> girar</span>
     <span><kbd>Shift</kbd> sprint ×2.5</span>
-    <span><kbd>1/2/3</kbd> cámaras</span>
+    <span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span>
     <span><kbd>R</kbd> reaparecer FIEC</span>
-    <span class="map-help">Mapa ESPOL: rueda + arrastrar</span>
-    <span class="fp-help">1ª persona: arrastrar = mirar</span>
+    <span class="map-help">Mapa: rueda + arrastrar</span>
+    <span class="fp-help">Juego: arrastrar = mirar</span>
   </div>
 
   <div id="toast" class="toast glass" aria-live="polite"></div>
