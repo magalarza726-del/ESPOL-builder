@@ -56,11 +56,12 @@ export const UNDERSTORY_SPECIES = [
 ];
 
 export const VEGETATION_PROFILE = {
-  // Los puntos son ANCLAS de pequeños grupos, no un árbol = un punto.
-  // Esto mantiene el GeoJSON ligero y permite que el renderer represente un
-  // bosque visualmente denso mediante instancias deterministas alrededor del ancla.
-  treeCount: 9000,
-  understoryPatchCount: 4200,
+  // v0.8.1: +500% de densidad efectiva frente a v0.8 = 6×.
+  // Para conservar fluidez no se sextuplica el número de GeoJSON: se duplican
+  // las anclas y se triplica el tamaño de los grupos naturales (2×3 = 6×).
+  densityMultiplier: 6,
+  treeCount: 18000,
+  understoryPatchCount: 8400,
   sampledTreeDensityHa: 817,
   lowPlotTreeDensityHa: 990,
   midPlotTreeDensityHa: 910,
@@ -69,25 +70,27 @@ export const VEGETATION_PROFILE = {
   highMoistureRadiusM: 720,
   ravineBoost: 2.4,
   cluster: {
-    naturalMin: 8,
-    naturalMax: 22,
+    naturalMin: 24,
+    naturalMax: 66,
     campusMin: 1,
-    campusMax: 4,
-    spreadM: 8.5
+    campusMax: 5,
+    renderMax: 66,
+    collisionMax: 32,
+    spreadM: 10.5
   },
   lod: {
-    // Dentro de ~90 m se pretende recuperar la sensación de cientos de fustes/ha.
-    treeRadiusM: 105,
-    understoryRadiusM: 78,
-    canopyMassRadiusM: 620,
-    maxTrees: 1600,
-    maxCanopyMass: 950,
-    maxShrubs: 420,
-    maxHerbs: 650,
-    maxVines: 170,
-    maxEpiphytes: 70,
-    refreshMs: 620,
-    refreshMoveM: 18,
-    gridCellM: 95
+    // Más densidad cercana, manteniendo instancing y auto-LOD.
+    treeRadiusM: 125,
+    understoryRadiusM: 92,
+    canopyMassRadiusM: 700,
+    maxTrees: 3000,
+    maxCanopyMass: 1400,
+    maxShrubs: 700,
+    maxHerbs: 1150,
+    maxVines: 280,
+    maxEpiphytes: 120,
+    refreshMs: 680,
+    refreshMoveM: 22,
+    gridCellM: 85
   }
 };
