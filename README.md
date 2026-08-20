@@ -1,173 +1,159 @@
 # ESPOL Builder — Campus Gustavo Galindo jugable 1:1
 
-**v0.5.0 · Vegetation / Flat LOD** — plantilla web de mundo abierto del Campus Gustavo Galindo de ESPOL, diseñada como `master map` reutilizable para exploración, terror, RPG o shooter y para funcionar como sitio estático en GitHub Pages.
+**v0.6.0 · Hybrid Performance** — plantilla web del Campus Gustavo Galindo de ESPOL, pensada como `master map` reutilizable para exploración, terror, RPG o shooter y desplegable en GitHub Pages.
 
-La meta no es afirmar que existe un gemelo digital arquitectónico o botánico perfecto. La meta es conservar **escala, relieve, estructura del campus, masa forestal, estratos vegetales e hitos reconocibles**, separando siempre dato medido, cartografía pública e inferencia procedural.
+La prioridad de esta versión es que el campus pueda jugarse con mucha más fluidez sin perder la escala 1:1 ni la investigación ecológica acumulada.
 
-## v0.5 — enfoque en fluidez y vegetación
+## Cambio arquitectónico principal
 
-Esta versión rehace el sistema visual con prioridad en rendimiento:
+Hasta v0.5, MapLibre hacía simultáneamente de mapa GIS y de motor de cámara del videojuego. Eso obligaba a recalcular/reproyectar terreno, vector tiles, edificios y capas cartográficas cada vez que el personaje se movía.
 
-- materiales 3D **planos** (`MeshBasicMaterial`), sin mapas de textura, normal maps, roughness maps, luces dinámicas ni sombras;
-- edificios con un material plano y sin gradiente vertical;
-- sombreado del terreno reducido;
-- foto aérea **apagada por defecto** y disponible sólo como opción;
-- antialias del renderer 3D desactivado;
-- interfaz sin `backdrop-filter`, blur, gradientes pesados ni grandes sombras;
-- geometrías low-poly;
-- `InstancedMesh` para árboles y sotobosque;
-- LOD por distancia;
-- límites de instancias adaptados a `hardwareConcurrency` y `deviceMemory` cuando el navegador los expone;
-- índice espacial en celdas de 150 m para evitar recorrer todo el bosque en cada actualización;
-- actualización de vegetación espaciada en tiempo y distancia;
-- el custom layer deja de forzar `triggerRepaint()` cuando la escena está quieta.
+Desde v0.6 hay **dos motores separados**:
+
+### Mapa
+
+- MapLibre GL JS.
+- Terreno, edificios, nombres, POI y navegación cartográfica.
+- Zoom, pan y orientación dentro de los límites de ESPOL.
+- No se mueve ni se repinta como cámara de videojuego cuando estás en 1ª/3ª persona.
+
+### Primera y tercera persona
+
+- Three.js independiente en `#game3d`.
+- Cámara de videojuego real.
+- Materiales planos (`MeshBasicMaterial`), sin luces dinámicas, sombras ni texturas pesadas.
+- Terreno, infraestructura y vegetación renderizados como datos locales métricos.
+
+Esta separación elimina el `map.jumpTo()` que antes se ejecutaba continuamente durante gameplay.
+
+## Relieve: Terrarium cacheado
+
+`src/game3d.js` contiene un lector propio de Mapzen/AWS Terrarium.
+
+Al iniciar:
+
+1. calcula qué tiles de zoom 15 cubren el bounding box de ESPOL;
+2. descarga únicamente esos tiles;
+3. decodifica cada píxel a elevación en metros mediante el formato Terrarium;
+4. conserva los datos en memoria;
+5. todas las consultas posteriores de altura son locales y síncronas.
+
+El personaje, árboles, carreteras y edificios dejan así de depender de `MapLibre.queryTerrainElevation()` durante gameplay.
+
+El terreno jugable se genera en **12 chunks principales (4 × 3)**, cada uno con malla low-poly. Three.js aplica frustum culling y el motor desactiva chunks suficientemente alejados.
+
+## Infraestructura local
+
+Durante la carga inicial, mientras MapLibre ya tiene visibles los tiles de ESPOL, v0.6 extrae información de las capas abiertas:
+
+- `building` → cajas 3D instanciadas;
+- `transportation` → tramos viales instanciados.
+
+Después de esa conversión, el mundo Three.js trabaja con esos datos locales y MapLibre queda pausado durante gameplay.
+
+Las cajas son una aproximación optimizada de las huellas originales; no sustituyen todavía el modelado arquitectónico fino de FIEC, FIMCP, Rectorado, CIB, etc.
 
 ## Vegetación ESPOL
 
-El sistema ya no representa el bosque únicamente como árboles. Distingue cinco hábitos visuales:
+Se conserva el modelo ecológico desarrollado en v0.5:
 
-1. árboles;
-2. arbustos;
-3. herbáceas;
-4. trepadoras/lianas;
-5. epífitas.
+- árboles;
+- arbustos;
+- herbáceas;
+- trepadoras/lianas;
+- epífitas.
 
-A distancia, el BVPP se resume como **masa vegetal**. Cerca del jugador se materializan instancias 3D planas dentro de radios limitados. Así se conserva la sensación de densidad sin dibujar miles de plantas completas al mismo tiempo.
+La selección de especies se apoya en investigaciones del Bosque y Vegetación Protector Prosperina, parcelas florísticas baja/media/alta, estudios de herbáceas/trepadoras/epífitas y documentación de restauración del bosque.
 
-La investigación completa está documentada en [`docs/ESPOL_VEGETATION_RESEARCH.md`](docs/ESPOL_VEGETATION_RESEARCH.md).
+Consulta el informe detallado en:
 
-### Fuentes ecológicas principales
+`docs/ESPOL_VEGETATION_RESEARCH.md`
 
-**Composición florística y estructura del Bosque y Vegetación Protectora Prosperina — ESPOL, proyecto 2024 / publicado 2025**  
-https://dspace.espol.edu.ec/handle/123456789/65962
+### LOD adaptativo
 
-- bosque semideciduo;
-- parcelas permanentes baja, media y alta;
-- árboles, arbustos y herbáceas;
-- Fabaceae, Rubiaceae y Bixaceae especialmente abundantes/frecuentes;
-- predominio de árboles juveniles en DAP 5–15 cm;
-- especies dominantes diferentes según altitud;
-- parcela alta con contexto más húmedo y registros de helechos, Cactaceae y una orquídea presumiblemente `Epidendrum`.
+La vegetación completa existe como base procedural, pero sólo una fracción se materializa en 3D alrededor del jugador.
 
-**Monitoreo de herbáceas, trepadoras y epífitas de la zona alta — ESPOL, 2010**  
-https://www.dspace.espol.edu.ec/handle/123456789/10919
+El motor usa:
 
-- 32 especies no arbustivas;
-- 15 herbáceas;
-- 14 trepadoras;
-- 3 epífitas/parásitas;
-- `Panicum maximum` e `Marsdenia ecuadoriensis` entre las especies de mayor importancia ecológica del estudio.
+- índice espacial por celdas;
+- radio distinto para árboles y sotobosque;
+- `InstancedMesh`;
+- geometrías low-poly;
+- materiales planos;
+- presupuesto dinámico según hardware y FPS;
+- reducción automática de resolución interna y densidad si cae el rendimiento.
 
-**Actualización del plan de manejo del Bosque Protector La Prosperina — ESPOL, 2021**  
-https://www.dspace.espol.edu.ec/handle/123456789/56033
+## Profiler integrado
 
-Documenta la historia de intervención del área y revegetación/reforestación. Por eso el juego evita representar el BVPP como un bosque primario homogéneo y mezcla regeneración juvenil, árboles maduros y zonas de aspecto restaurado.
+La interfaz muestra en tiempo real:
 
-**Sostenibilidad ESPOL**  
-https://sostenibilidad.espol.edu.ec/entorno-e-infraestructura
+- FPS;
+- frametime;
+- draw calls;
+- triángulos;
+- instancias vegetales visibles;
+- chunks activos;
+- porcentaje de calidad dinámica.
 
-- campus: 6.587.827 m²;
-- vegetación forestal: 5.264.107 m² (~80 %);
-- edificaciones: 174.902 m² (~3 %);
-- vegetación plantada: <10 %.
+El objetivo es poder optimizar con mediciones reales en la computadora del usuario, no sólo por intuición.
 
-**Los Gigantes del Bosque Seco**  
-https://www.espol.edu.ec/en/node/9991
+## Escala y movimiento
 
-ESPOL reporta 121 especies de árboles, además de algunos arbustos, identificadas en el entorno de las facultades. El libro incluye distribución, morfología, listado taxonómico y rutas botánicas. Mientras el dataset georreferenciado completo no esté disponible públicamente, el juego usa esa fuente para diversidad e identidad, no para inventar coordenadas individuales.
+- 1 unidad métrica del mundo ≈ 1 metro real.
+- Spawn: exterior aproximado del Auditorio FIEC.
+- Avatar: ~1,80 m.
+- Ojos en primera persona: 1,68 m.
+- Velocidad base actual: **7,8 m/s ≈ 28,1 km/h**.
+- `Shift`: multiplicador **×2,5**, máximo aproximado **19,5 m/s ≈ 70,2 km/h**.
+- El movimiento utiliza aceleración, frenado, suavizado direccional y subpasos para reducir saltos por variaciones de FPS.
 
-## Escala, relieve y movimiento
+## Controles
 
-- longitud/latitud reales;
-- **1 m del juego ≈ 1 m real** a escala local;
-- relieve mediante Mapzen/AWS Terrarium, exageración vertical 1×;
-- mundo visual y navegación limitados al área ESPOL usada por el estudio GIS;
-- spawn exterior aproximado del Auditorio FIEC;
-- avatar ~1,80 m y cámara de primera persona a ~1,68 m;
-- velocidad base actual: **7,8 m/s ≈ 28,1 km/h**;
-- `Shift`: ×2,5, hasta **19,5 m/s ≈ 70,2 km/h**;
-- aceleración, frenado, giro y dirección suavizados;
-- integración por subpasos para evitar saltos cuando cae el FPS.
+- `W/S`: avanzar / retroceder
+- `A/D`: desplazamiento lateral
+- `Q/E` o flechas izquierda/derecha: girar
+- `Shift`: sprint ×2,5
+- `R`: reaparecer junto al Auditorio FIEC
+- `1`: Mapa GIS
+- `2`: Tercera persona
+- `3`: Primera persona
+- En Mapa: rueda + arrastre
+- En gameplay: arrastre del ratón para orientar la cámara/personaje
 
-## Cámaras
+## Fuentes principales
 
-- `1` — **Mapa ESPOL**: zoom con rueda, pan con arrastre y navegación confinada al campus.
-- `2` — **Tercera persona**: cámara física detrás del avatar.
-- `3` — **Primera persona**: cámara a altura de ojos sobre el DEM.
+La documentación ampliada de fuentes está en `docs/`.
 
-## Edificios e infraestructura
+Entre las fuentes utilizadas están:
 
-Las huellas 3D proceden de OpenStreetMap/OpenFreeMap. Cuando hay alturas o niveles públicos se usan; cuando faltan, se aplica una altura de respaldo. La identidad de sectores y bloques se contrasta con documentación institucional de FIEC, FIMCP, FICT, FADCOM y otros sectores.
+- ESPOL — Entorno e infraestructura: https://sostenibilidad.espol.edu.ec/entorno-e-infraestructura
+- Composición florística y estructura del BVPP: https://www.dspace.espol.edu.ec/handle/123456789/65962
+- Herbáceas, trepadoras y epífitas del Bosque Protector Prosperina: https://www.dspace.espol.edu.ec/handle/123456789/10919
+- Actualización del plan de manejo del Bosque Protector: https://www.dspace.espol.edu.ec/handle/123456789/56033
+- Los Gigantes del Bosque Seco: https://www.espol.edu.ec/en/node/9991
+- Cartografía base: OpenStreetMap / OpenFreeMap
+- Elevación: Mapzen Terrain Tiles / AWS Open Data, formato Terrarium
 
-Las fachadas exactas, materiales arquitectónicos, mobiliario, antenas y accesos siguen siendo una fase de modelado posterior. En v0.5 se prioriza deliberadamente **vegetación + rendimiento**.
+Los individuos vegetales generados son una **reconstrucción procedural calibrada**, no un inventario georreferenciado árbol por árbol.
 
-## Cómo funciona el LOD vegetal
+## Validación y GitHub Pages
 
-El generador produce una base procedural reproducible de aproximadamente:
+El repositorio incluye `package.json` con:
 
-- 3.600 árboles;
-- 1.800 parches de sotobosque.
+```bash
+npm run check
+```
 
-Eso **no significa que sólo existan 5.400 plantas en ESPOL**. Son muestras visuales de una comunidad muchísimo mayor.
+El workflow de GitHub Pages ejecuta esta validación sintáctica antes de publicar.
 
-En 3D sólo se materializa una fracción cercana:
+`.github/workflows/pages.yml` despliega automáticamente desde `main` cuando GitHub Pages está configurado para usar **GitHub Actions**.
 
-- árboles: radio aproximado 330 m, con un máximo adaptativo;
-- sotobosque: radio aproximado 135 m;
-- límites separados para arbustos, hierbas, lianas y epífitas.
+## Próximos pasos
 
-Los equipos modestos reciben automáticamente un presupuesto de instancias menor.
+La siguiente mejora de fidelidad ya no debería ser aumentar indiscriminadamente la cantidad de polígonos. El mejor retorno sería:
 
-## Estacionalidad
-
-El slider seco ↔ lluvioso modifica:
-
-- volumen aparente de copas deciduas;
-- color plano del follaje;
-- presencia visual del estrato herbáceo;
-- persistencia de especies tolerantes a sequía;
-- mayor peso visual de vegetación húmeda en el contexto de la parcela alta.
-
-No se usan texturas fotográficas de hojas. La identidad se construye con forma, escala, densidad, color y estratificación.
-
-## Fidelidad: qué es real y qué es procedural
-
-### Alta fidelidad de base
-
-- escala y coordenadas;
-- DEM sin exageración;
-- estructura general de campus/bosque;
-- muchas huellas de edificios y vías;
-- composición vegetal anclada a estudios ESPOL;
-- separación bosque natural/seminatural vs. vegetación plantada del núcleo;
-- diversidad de hábitos vegetales.
-
-### Procedural / aproximado
-
-- posición de cada árbol o planta individual;
-- interpolación entre parcelas;
-- geometría exacta de cada especie;
-- localización exacta de todos los parches históricos de restauración;
-- fachadas y detalles arquitectónicos no disponibles como datos abiertos.
-
-## Arquitectura
-
-- MapLibre GL JS 5.24 — mapa, terreno, capas y cámaras;
-- Three.js 0.169 — avatar y vegetación cercana mediante instancias;
-- OpenFreeMap / OpenStreetMap — cartografía;
-- Mapzen/AWS Terrarium — elevación;
-- World Imagery — capa aérea opcional, apagada por defecto;
-- sitio estático, sin backend.
-
-## GitHub Pages
-
-El repositorio contiene `.github/workflows/pages.yml`. Con **Settings → Pages → Source → GitHub Actions**, cada actualización de `main` puede desplegarse automáticamente.
-
-## Licencias y atribuciones
-
-- código propio: ver `LICENSE`;
-- OpenStreetMap: © OpenStreetMap contributors;
-- OpenFreeMap: según sus términos de atribución;
-- Terrain Tiles: Mapzen/AWS Open Data y fuentes del dataset;
-- World Imagery: © Esri y proveedores indicados por el servicio;
-- las publicaciones de ESPOL se usan como fuentes de investigación; este repositorio no redistribuye sus PDFs, libros ni fotografías.
+1. guardar en el repositorio un extracto local definitivo de carreteras/edificios de ESPOL para no depender de OpenFreeMap durante arranque;
+2. modelar fachadas icónicas con geometría low-poly específica;
+3. añadir un editor de correcciones in-game;
+4. calibrar el auto-LOD con mediciones del profiler en distintos PCs y móviles;
+5. incorporar tracks GPS reales de senderos del BVPP cuando estén disponibles.
