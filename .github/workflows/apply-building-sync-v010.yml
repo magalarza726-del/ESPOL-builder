@@ -1,0 +1,33 @@
+name: Apply v0.10 building synchronization
+on:
+  push:
+    paths:
+      - scripts/apply-building-sync-v010.mjs
+permissions:
+  contents: write
+jobs:
+  refactor:
+    if: ${{ !contains(github.event.head_commit.message, '[building-sync-v010]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply synchronization refactor
+        run: node scripts/apply-building-sync-v010.mjs
+      - name: Verify runtime
+        run: npm run verify
+      - name: Commit generated refactor
+        run: |
+          git config user.name "ESPOL Builder Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/runtime.js src/game3d.js index.html
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Synchronize Map and 3D building geometry [building-sync-v010]"
+          git push
