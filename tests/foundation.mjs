@@ -4,18 +4,65 @@ import { CAMPUS } from '../src/config.js';
 import { haversine } from '../src/core.js';
 import { FIMCP_SPATIAL_CONTROL, insideFIMCPCore, controlPointList } from '../src/fimcp-spatial-control.js';
 import { FACULTY_IDS } from '../src/faculty-registry-v017.js';
-const { FIMCP_PARKING_SPAWN }=await import('../src/spawn-fimcp-v015.js');
-const { PROJECT, VERTICAL_SLICE, insideVerticalSlice }=await import('../src/project-foundation-v017.js');
-const { FIMCP_PHOTO_SURVEY, surveyCoverageIsComplete, surveyPhotoNumbers }=await import('../src/fimcp-photo-survey.js');
+const { FIMCP_PARKING_SPAWN } = await import('../src/spawn-fimcp-v015.js');
+const { PROJECT } = await import('../src/project-foundation-v018.js');
+const { FIMCP_PHOTO_SURVEY, surveyCoverageIsComplete, surveyPhotoNumbers } = await import('../src/fimcp-photo-survey.js');
 
-assert.equal(PROJECT.version,'v0.17.0');assert.equal(PROJECT.codename,'CAMPUS ARCHITECTURE + INTERIORS');assert.equal(PROJECT.featureFreeze,true);assert.equal(PROJECT.targetFps,60);assert.equal(PROJECT.activeReconstruction,'campus-architecture-v017');assert.equal(VERTICAL_SLICE.id,'campus-architecture-v017');assert.equal(insideVerticalSlice(CAMPUS.spawn.lng,CAMPUS.spawn.lat),true);assert.equal(insideFIMCPCore(CAMPUS.spawn.lng,CAMPUS.spawn.lat),true);assert.equal(CAMPUS.spawn.lng,FIMCP_PARKING_SPAWN.lng);assert.equal(CAMPUS.spawn.lat,FIMCP_PARKING_SPAWN.lat);
-assert.equal(FIMCP_PHOTO_SURVEY.photoCount,100);assert.equal(surveyCoverageIsComplete(),true);assert.deepEqual(surveyPhotoNumbers(),Array.from({length:100},(_,i)=>i+1));assert.equal(FACULTY_IDS.length,8);
-const controls=controlPointList();assert.ok(controls.length>=7);for(const p of controls)assert.ok(Number.isFinite(p.lng)&&Number.isFinite(p.lat)&&p.source&&p.confidence);
-const P=FIMCP_SPATIAL_CONTROL.points;assert.ok(haversine(P.parking,P.auditorium)<85);assert.ok(haversine(P.auditorium,P.block18A)<75);assert.ok(haversine(P.block18A,P.block24C)<135);assert.ok(haversine(P.block24C,P.terminal)<80);assert.ok(haversine(P.parking,P.terminal)<260);
-const index=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.match(index,/game3d_v017\.js/);assert.match(index,/v0\.17\.0 · CAMPUS ARCHITECTURE · INTERIORES/);assert.match(index,/<option value="rpg">Día<\/option>/);assert.match(index,/<option value="shooter">Noche<\/option>/);assert.doesNotMatch(index,/<option value="explore">/);assert.doesNotMatch(index,/<option value="horror">/);
-const app=fs.readFileSync(new URL('../src/app.js',import.meta.url),'utf8');assert.ok(app.indexOf('spawn-fimcp-v015.js')<app.indexOf('project-foundation-v017.js'));assert.ok(app.indexOf('project-foundation-v017.js')<app.indexOf('building-sync-preload.js'));assert.ok(app.indexOf('building-sync-preload.js')<app.indexOf('runtime.js'));
-const composer=fs.readFileSync(new URL('../src/game3d_v017.js',import.meta.url),'utf8');assert.match(composer,/project-foundation-v017\.js/);assert.match(composer,/installCampusArchitectureV017/);assert.match(composer,/installDayNightExperience/);assert.match(composer,/auditFoundation/);assert.match(composer,/throw new Error\(message\)/);
-const architecture=fs.readFileSync(new URL('../src/campus-architecture-v017.js',import.meta.url),'utf8');for(const token of['CampusArchitecture-v017','mergeRecords','runtimeFallbackBuildings','controlFallbackBuildings','fimcpVisibleBuildings','wallColliders','objectColliders'])assert.match(architecture,new RegExp(token));assert.match(architecture,/photos define local architectural vocabulary/);assert.doesNotMatch(architecture,/Math\.random\(/);assert.doesNotMatch(architecture,/TextureLoader/);
-const foundation=fs.readFileSync(new URL('../src/project-foundation-v017.js',import.meta.url),'utf8');assert.match(foundation,/campus-architecture-v017-not-installed/);assert.match(foundation,/fimcp-buildings-missing/);assert.match(foundation,/faculty-registry-not-eight/);assert.match(foundation,/day-night-v016-not-installed/);
-const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));for(const file of['game3d_v017.js','project-foundation-v017.js','faculty-registry-v017.js','campus-architecture-v017.js'])assert.ok(pkg.scripts.check.includes(file),`syntax check missing ${file}`);assert.match(pkg.scripts.test,/foundation\.mjs/);
-console.log('ESPOL Builder v0.17 foundation tests: OK');
+assert.equal(PROJECT.version, 'v0.18.0');
+assert.equal(PROJECT.codename, 'TERRAIN-AWARE FOUNDATIONS + AGGRESSIVE STABILIZATION');
+assert.equal(PROJECT.featureFreeze, true);
+assert.equal(PROJECT.targetFps, 60);
+assert.equal(PROJECT.activeReconstruction, 'building-foundation-v018');
+assert.equal(insideFIMCPCore(CAMPUS.spawn.lng, CAMPUS.spawn.lat), true);
+assert.equal(CAMPUS.spawn.lng, FIMCP_PARKING_SPAWN.lng);
+assert.equal(CAMPUS.spawn.lat, FIMCP_PARKING_SPAWN.lat);
+
+assert.equal(FIMCP_PHOTO_SURVEY.photoCount, 100);
+assert.equal(surveyCoverageIsComplete(), true);
+assert.deepEqual(surveyPhotoNumbers(), Array.from({length:100}, (_,i) => i + 1));
+assert.equal(FACULTY_IDS.length, 8);
+const controls = controlPointList();
+assert.ok(controls.length >= 7);
+for (const p of controls) assert.ok(Number.isFinite(p.lng) && Number.isFinite(p.lat) && p.source && p.confidence);
+const P = FIMCP_SPATIAL_CONTROL.points;
+assert.ok(haversine(P.parking,P.auditorium) < 85);
+assert.ok(haversine(P.auditorium,P.block18A) < 75);
+assert.ok(haversine(P.block18A,P.block24C) < 135);
+assert.ok(haversine(P.block24C,P.terminal) < 80);
+
+const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+assert.match(index, /game3d_v018\.js/);
+assert.match(index, /v0\.18\.0 · TERRAIN FOUNDATIONS · STABILITY/);
+
+const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+assert.ok(app.indexOf('spawn-fimcp-v015.js') < app.indexOf('project-foundation-v018.js'));
+assert.ok(app.indexOf('project-foundation-v018.js') < app.indexOf('building-sync-preload.js'));
+assert.ok(app.indexOf('building-sync-preload.js') < app.indexOf('runtime.js'));
+
+const composer = fs.readFileSync(new URL('../src/game3d_v018.js', import.meta.url), 'utf8');
+assert.match(composer, /createV017World/);
+assert.match(composer, /runWithFoundationCenters\(world, model/);
+assert.match(composer, /installFoundationSkirts\(world, model\)/);
+assert.match(composer, /installWalkSurface\(world, model\)/);
+assert.match(composer, /Building foundation audit failed/);
+
+const foundations = fs.readFileSync(new URL('../src/building-foundation-v018.js', import.meta.url), 'utf8');
+for (const token of ['buildFoundationModel','sampleGeometry','centerElevation','walkElevation','installFoundationSkirts','installWalkSurface','auditBuildingFoundations']) assert.match(foundations, new RegExp(token));
+assert.match(foundations, /floor = max \+ 0\.10/);
+assert.match(foundations, /f\.floor < f\.maxTerrain \+ \.05/);
+assert.match(foundations, /steep-footprint/);
+assert.match(foundations, /controlFallback/);
+assert.doesNotMatch(foundations, /Math\.random\(/);
+
+// Regression guard: the new compositor must not go back to installing architecture directly
+// without the whole-footprint foundation context.
+assert.ok(composer.indexOf('buildFoundationModel') < composer.indexOf('v017SetStructures'));
+assert.ok(composer.indexOf('runWithFoundationCenters') < composer.indexOf('installFoundationSkirts'));
+
+const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+for (const file of ['game3d_v018.js','project-foundation-v018.js','building-foundation-v018.js','game3d_v017.js','campus-architecture-v017.js']) {
+  assert.ok(pkg.scripts.check.includes(file), `syntax check missing ${file}`);
+}
+assert.match(pkg.scripts.test, /foundation\.mjs/);
+
+console.log('ESPOL Builder v0.18 foundation tests: OK');
