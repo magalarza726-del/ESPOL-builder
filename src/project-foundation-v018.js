@@ -45,6 +45,20 @@ export function installProjectMetadata() {
     }
   });
 
+  // runtime.js intentionally remains a stable core and still contains an old internal
+  // VERSION string. Normalize any legacy version prefix at the UI boundary instead of
+  // forking the runtime simply to change presentation text.
+  const toast = document.querySelector('#toast');
+  if (toast && typeof MutationObserver !== 'undefined') {
+    const normalizeRuntimeVersion = () => {
+      const text = toast.textContent || '';
+      if (/^v0\.\d+\.\d+/.test(text) && !text.startsWith(PROJECT.version)) {
+        toast.textContent = text.replace(/^v0\.\d+\.\d+/, PROJECT.version);
+      }
+    };
+    new MutationObserver(normalizeRuntimeVersion).observe(toast, { childList: true, characterData: true, subtree: true });
+  }
+
   if (!(CAMPUS.avatarHeightM >= 1.5 && CAMPUS.avatarHeightM <= 2.1)) {
     remember('foundation', `avatar-scale-invalid:${CAMPUS.avatarHeightM}`);
   }
