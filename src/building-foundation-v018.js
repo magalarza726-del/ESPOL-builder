@@ -73,18 +73,28 @@ function controlRecords() {
     return { id: `control:${p.id}`, geometry: rectGeometry(p.lng, p.lat, width, depth), lng: p.lng, lat: p.lat, properties: { controlFallback: true, faculty: 'FIMCP' } };
   });
 }
+function alreadyRepresented(list, record, radiusM) {
+  const c = recordCenter(record);
+  if (!c) return true;
+  return list.some(existing => {
+    const q = recordCenter(existing);
+    if (!q) return false;
+    // Center-distance alone was not enough: a fallback rectangle whose centre lies
+    // inside an exact GIS footprint could survive deduplication and create a second
+    // slab at a different elevation. Containment makes exact GIS authoritative.
+    return containsGeometry(existing.geometry, c.lng, c.lat)
+      || containsGeometry(record.geometry, q.lng, q.lat)
+      || distanceM(c, q) < radiusM;
+  });
+}
 function mergeRecords(structures = {}) {
   const captured = globalThis.__ESPOL_BUILDING_SYNC__?.getFeatures?.() || [];
   const out = captured.map((r, i) => ({ ...r, id: r.id ?? `gis:${i}` })).filter(r => polygons(r.geometry).length);
   for (const [i, b] of (structures.buildings || []).entries()) {
     const r = runtimeRecord(b, i); if (!r) continue;
-    const c = recordCenter(r);
-    if (!out.some(x => { const q = recordCenter(x); return q && distanceM(c, q) < 15; })) out.push(r);
+    if (!alreadyRepresented(out, r, 15)) out.push(r);
   }
-  for (const r of controlRecords()) {
-    const c = recordCenter(r);
-    if (!out.some(x => { const q = recordCenter(x); return q && distanceM(c, q) < 18; })) out.push(r);
-  }
+  for (const r of controlRecords()) if (!alreadyRepresented(out, r, 18)) out.push(r);
   return out;
 }
 function sampleGeometry(record, baseElevation) {
@@ -111,7 +121,6 @@ function sampleGeometry(record, baseElevation) {
   const b = bounds(record.geometry);
   if (b) {
     push(b.lng, b.lat);
-    // Interior samples catch DEM peaks that edge-only sampling would miss.
     for (let ix = 1; ix <= 4; ix++) for (let iz = 1; iz <= 4; iz++) {
       const lng = b.minLng + (b.maxLng - b.minLng) * ix / 5;
       const lat = b.minLat + (b.maxLat - b.minLat) * iz / 5;
@@ -156,7 +165,6 @@ export function buildFoundationModel(world, structures = {}) {
     const samples = sampleGeometry(record, baseElevation); if (!samples.length) continue;
     const values = samples.map(s => s.elevation).sort((a,b) => a-b);
     const min = values[0], max = values.at(-1), median = values[Math.floor(values.length / 2)];
-    // Finished floor is horizontal and guaranteed to clear the complete sampled terrain.
     const floor = max + 0.10;
     foundations.push({
       id: String(record.id ?? record.key ?? `${center.lng}:${center.lat}`), record, center,
@@ -168,8 +176,6 @@ export function buildFoundationModel(world, structures = {}) {
     records: foundations,
     baseElevation,
     centerElevation(lng, lat) {
-      // v0.17 asks elevation at exactly each record centre. Keep this matching radius
-      // intentionally tiny so road/vegetation midpoint queries cannot accidentally hit a slab.
       let best = null, bestD = 0.35;
       for (const f of foundations) {
         const d = distanceM({lng,lat}, f.center);
@@ -214,7 +220,7 @@ export function installFoundationSkirts(world, model) {
       const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, steps: 1 });
       g.rotateX(-Math.PI / 2);
       g.translate(0, f.minTerrain - world.originElev - .12, 0);
-      const mesh = new THREE.Mesh(g, mat); root.add(mesh); meshes++;
+      root.add(new THREE.Mesh(g, mat)); meshes++;
     }
   }
   world.scene.add(root);
@@ -230,37 +236,31 @@ export function installFoundationSkirts(world, model) {
 }
 
 export function installWalkSurface(world, model) {
+  // Always replace the active model. The render wrapper below deliberately reads
+  // this property dynamically so a second structure scan cannot keep walking on
+  // the first scan's floors.
   world.buildingFoundationModel = model;
   world.getWalkElevation = (lng, lat) => {
     const current = world.buildingFoundationModel;
+    if (!current) return world.__terrainOnlyElevation(lng, lat);
     return world.buildingsEnabled === false ? current.baseElevation(lng, lat) : current.walkElevation(lng, lat);
   };
-
-  if (!world.__buildingFoundationToggleV018) {
-    world.__buildingFoundationToggleV018 = true;
-    const baseToggle = world.setBuildingsEnabled?.bind(world);
-    world.setBuildingsEnabled = value => {
-      baseToggle?.(value);
-      if (world.__buildingFoundationRootV018) world.__buildingFoundationRootV018.visible = !!value;
-    };
-  }
 
   if (world.__walkSurfaceRenderV018) return;
   world.__walkSurfaceRenderV018 = true;
   const baseRender = world.render.bind(world);
-  world.render = function(player, state, dt) {
+  world.render = function(player, state, dt, now) {
     if (this.__buildingFoundationRootV018) this.__buildingFoundationRootV018.visible = !!state.buildingsEnabled;
     const rawGetElevation = this.getElevation;
     const playerPoint = { lng: player.lng, lat: player.lat };
     this.getElevation = (lng, lat) => {
-      // Only substitute the player's own elevation query. Forest, roads and terrain keep
-      // consuming the original terrain surface and cannot be lifted onto building slabs.
       if (state.buildingsEnabled && distanceM(playerPoint, {lng,lat}) < 0.08) {
-        return this.buildingFoundationModel?.walkElevation(lng, lat) ?? rawGetElevation(lng, lat);
+        const current = this.buildingFoundationModel;
+        return current?.walkElevation(lng, lat) ?? rawGetElevation(lng, lat);
       }
       return rawGetElevation(lng, lat);
     };
-    try { return baseRender(player, state, dt); }
+    try { return baseRender(player, state, dt, now); }
     finally { this.getElevation = rawGetElevation; }
   };
 }
