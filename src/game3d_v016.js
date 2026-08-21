@@ -1,5 +1,5 @@
 import { createGameWorld as createV013World } from './game3d_v013.js';
-import { auditFoundation, PROJECT } from './project-foundation.js';
+import { auditFoundation, PROJECT } from './project-foundation-v016.js';
 import { installFIMCPSpatialReconstruction } from './fimcp-spatial-v016.js';
 import { installDayNightExperience } from './day-night-v016.js';
 
