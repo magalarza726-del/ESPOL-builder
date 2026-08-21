@@ -1,1 +1,0 @@
-Candidate frozen after v0.16 validation updates.
