@@ -5,83 +5,42 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Master world jugable 1:1 de ESPOL. v0.16 corrige el control espacial de FIMCP y simplifica la experiencia a Día y Noche." />
+  <meta name="description" content="Master world jugable 1:1 de ESPOL. v0.17 restaura edificios, añade arquitectura de facultades, interiores navegables y colisiones con puertas." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="./assets/styles.css" />
-  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","./src/game3d.js":"./src/game3d_v016.js"}}</script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","./src/game3d.js":"./src/game3d_v017.js"}}</script>
 </head>
 <body class="game-mode">
   <div id="map" aria-label="Mapa GIS de ESPOL"></div>
   <canvas id="game3d" aria-label="Mundo jugable 3D de ESPOL"></canvas>
 
-  <div id="loading" class="loading-screen">
-    <div class="loader-card">
-      <div class="loader-mark">EB</div><h1>ESPOL Builder</h1>
-      <p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div>
-      <small>Terreno físico=visual · edificios Mapa=3D · Forest System V2 · FIMCP con control espacial</small>
-    </div>
-  </div>
+  <div id="loading" class="loading-screen"><div class="loader-card"><div class="loader-mark">EB</div><h1>ESPOL Builder</h1><p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div><small>Terreno físico=visual · GIS + fallback seguro · Forest System V2 · arquitectura e interiores</small></div></div>
 
-  <header class="topbar glass">
-    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.16.0 · FIMCP SPATIAL CONTROL · DÍA/NOCHE</span></div>
-    <div class="top-actions">
-      <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
-      <button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button>
-      <button id="btnFirstPerson" title="Primera persona (3)">1ª persona</button>
-      <button id="btnFullscreen" title="Pantalla completa">⛶</button>
-    </div>
-  </header>
+  <header class="topbar glass"><div><strong>ESPOL BUILDER</strong><span class="badge">v0.17.0 · CAMPUS ARCHITECTURE · INTERIORES</span></div><div class="top-actions"><button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button><button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button><button id="btnFirstPerson" title="Primera persona (3)">1ª persona</button><button id="btnFullscreen" title="Pantalla completa">⛶</button></div></header>
 
-  <section class="hud glass" id="hud">
-    <div class="hud-grid">
-      <div><span>Distancia</span><b id="distance">0 m</b></div><div><span>Altitud</span><b id="altitude">—</b></div>
-      <div><span>Velocidad</span><b id="speed">0 km/h</b></div><div><span>Movimiento</span><b id="pace">Quieto</b></div>
-      <div><span>Rumbo</span><b id="bearing">0°</b></div><div><span>Vista</span><b id="viewMode">3ª persona</b></div>
-    </div>
-    <div class="coords"><span>Posición</span><b id="coords">—</b></div>
-    <div class="objective"><span>Reconstrucción activa</span><b id="objective">Valida FIMCP con las distancias del GIS y la red de control espacial</b><div id="progressDots" class="progress-dots"></div></div>
-  </section>
+  <section class="hud glass" id="hud"><div class="hud-grid"><div><span>Distancia</span><b id="distance">0 m</b></div><div><span>Altitud</span><b id="altitude">—</b></div><div><span>Velocidad</span><b id="speed">0 km/h</b></div><div><span>Movimiento</span><b id="pace">Quieto</b></div><div><span>Rumbo</span><b id="bearing">0°</b></div><div><span>Vista</span><b id="viewMode">3ª persona</b></div></div><div class="coords"><span>Posición</span><b id="coords">—</b></div><div class="objective"><span>Reconstrucción activa</span><b id="objective">Valida edificios, puertas, aulas y oficinas del campus</b><div id="progressDots" class="progress-dots"></div></div></section>
 
-  <section class="perf-panel glass" id="perfPanel" aria-label="Profiler de rendimiento">
-    <div class="perf-head"><b>PERFORMANCE</b><span>auto LOD</span></div>
-    <div><span>FPS</span><b id="perfFps">—</b></div><div><span>Frame</span><b id="perfMs">—</b></div>
-    <div><span>Draw calls</span><b id="perfDraws">—</b></div><div><span>Triángulos</span><b id="perfTris">—</b></div>
-    <div><span>Vegetación</span><b id="perfVeg">—</b></div><div><span>Chunks</span><b id="perfChunks">—</b></div>
-    <div><span>Calidad</span><b id="perfQuality">—</b></div>
-  </section>
+  <section class="perf-panel glass" id="perfPanel" aria-label="Profiler de rendimiento"><div class="perf-head"><b>PERFORMANCE</b><span>auto LOD</span></div><div><span>FPS</span><b id="perfFps">—</b></div><div><span>Frame</span><b id="perfMs">—</b></div><div><span>Draw calls</span><b id="perfDraws">—</b></div><div><span>Triángulos</span><b id="perfTris">—</b></div><div><span>Vegetación</span><b id="perfVeg">—</b></div><div><span>Chunks</span><b id="perfChunks">—</b></div><div><span>Calidad</span><b id="perfQuality">—</b></div></section>
 
-  <aside class="panel glass" id="panel">
-    <div class="panel-head"><div><small>CAPAS DEL MUNDO</small><h2>Campus Gustavo Galindo</h2></div><button id="panelToggle" aria-label="Ocultar panel">×</button></div>
-    <div class="control-row">
-      <label><input id="terrainToggle" type="checkbox" checked> Relieve real · una sola superficie física/visual</label>
-      <label><input id="buildingsToggle" type="checkbox" checked> Edificios sincronizados Mapa ↔ 3D</label>
-      <label><input id="treesToggle" type="checkbox" checked> Forest System V2 · IDs/chunks deterministas</label>
-      <label><input id="imageryToggle" type="checkbox"> Foto aérea sólo en Mapa GIS</label>
-      <label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label>
-      <label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label>
-    </div>
+  <aside class="panel glass" id="panel"><div class="panel-head"><div><small>CAPAS DEL MUNDO</small><h2>Campus Gustavo Galindo</h2></div><button id="panelToggle" aria-label="Ocultar panel">×</button></div><div class="control-row"><label><input id="terrainToggle" type="checkbox" checked> Relieve real · una sola superficie física/visual</label><label><input id="buildingsToggle" type="checkbox" checked> Edificios · GIS + recuperación segura</label><label><input id="treesToggle" type="checkbox" checked> Forest System V2 · IDs/chunks deterministas</label><label><input id="imageryToggle" type="checkbox"> Foto aérea sólo en Mapa GIS</label><label><input id="labelsToggle" type="checkbox" checked> Hitos y nombres ESPOL</label><label><input id="boundsToggle" type="checkbox" checked> Límite de estudio GIS</label></div>
 
     <div class="season-card"><div><span>Estado estacional del bosque</span><b id="seasonLabel">Seca</b></div><input id="season" type="range" min="0" max="100" value="25" /><div class="season-scale"><span>seca / semideciduo</span><span>lluviosa / rebrote</span></div></div>
     <div class="mode-card"><span>Modalidad</span><select id="gameMode"><option value="rpg">Día</option><option value="shooter">Noche</option></select><small id="modeActionHint">Día: Shift ×5 + jetpack. Noche: linterna + pistola.</small></div>
 
-    <div class="fact-strip"><div><b>FIMCP</b><span>control espacial</span></div><div><b>2</b><span>modalidades</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
-
-    <details open><summary>Objetivo de v0.16</summary><p class="fineprint">La secuencia de 100 fotos deja de determinar posiciones globales por inferencia. Auditorio FIMCP, parqueadero, Bloque 18-A, Comedor FIMCP, 24C y Terminal se fijan mediante coordenadas GIS/OSM; las fotos sólo añaden detalle local alrededor de esas anclas. LEMAT/24E no se colocan arbitrariamente si su huella no puede identificarse.</p></details>
+    <div class="fact-strip"><div><b>8</b><span>facultades</span></div><div><b>2</b><span>modalidades</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
+    <details open><summary>Objetivo de v0.17</summary><p class="fineprint">Los edificios nunca dependen de una sola captura GIS: la huella exacta tiene prioridad y los volúmenes del escaneo/fallback sólo rellenan ausencias. Los bloques identificados como FIEC, FIMCP, FICT, FADCOM, FCNM, FCSH, FCV o FIMCM reciben ventanas, puertas transitables y un interior representativo según su uso documentado. Las fotos del levantamiento FIMCP y de aulas ESPOL definen detalle visual, no coordenadas globales.</p></details>
     <details><summary>Vegetación investigada</summary><p class="fineprint">La estructura arbórea se calibra con parcelas baja, media y alta de ESPOL; el sotobosque incorpora arbustos, herbáceas, trepadoras y epífitas. La distribución sigue siendo reconstrucción procedural, no un censo georreferenciado árbol por árbol.</p><div id="speciesList" class="species-list"></div></details>
     <details><summary>Edificios documentados</summary><div id="buildingList" class="building-list"></div></details>
-    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre y gameplay Three.js. Ambos comparten huellas GIS. v0.16 añade una red de control espacial de FIMCP para impedir que edificios de otras zonas entren en la reconstrucción fotográfica. Día reutiliza el controlador de jetpack; Noche combina iluminación oscura, linterna y controlador de pistola.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Arquitectura, calidad y fuentes</a></details>
+    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre y gameplay Three.js. v0.17 reconstruye una sola capa 3D resiliente: polígonos GIS cuando existen, cajas del escaneo como respaldo y anclas FIMCP únicamente para edificios con coordenadas de control conocidas. Las colisiones de facultades detalladas siguen paredes y dejan libres los huecos de puerta.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Arquitectura, calidad y fuentes</a></details>
   </aside>
 
   <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
   <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> jetpack Día / salto Noche</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×5</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIMCP</span><span><kbd>F</kbd> linterna (Noche)</span><span class="fp-help">Noche: clic = disparar</span></div>
-  <div id="toast" class="toast glass" aria-live="polite"></div>
-  <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
-
-  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
-  <script type="module" src="./src/app.js"></script>
+  <div id="toast" class="toast glass" aria-live="polite"></div><div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
+  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script><script type="module" src="./src/app.js"></script>
 </body>
 </html>
