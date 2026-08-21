@@ -47,7 +47,6 @@ assert.ok(TREE_SPECIES.length >= 10 && UNDERSTORY_SPECIES.length >= 10);
 
 const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(index, /game3d_v018\.js/);
-assert.match(index, /v0\.18\.0 · TERRAIN FOUNDATIONS · STABILITY/);
 assert.match(index, /<option value="rpg">Día<\/option><option value="shooter">Noche<\/option>/);
 
 const app = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
@@ -55,16 +54,23 @@ assert.ok(app.indexOf('spawn-fimcp-v015.js') < app.indexOf('project-foundation-v
 assert.ok(app.indexOf('project-foundation-v018.js') < app.indexOf('building-sync-preload.js'));
 
 const composer = fs.readFileSync(new URL('../src/game3d_v018.js', import.meta.url), 'utf8');
-for (const token of ['buildFoundationModel','runWithFoundationCenters','installFoundationSkirts','installWalkSurface','auditBuildingFoundations']) assert.match(composer, new RegExp(token));
+for (const token of ['buildFoundationModel','runWithFoundationCenters','installFoundationSkirts','installWalkSurface','auditBuildingFoundations','prepareStructureReloadV0181','installRuntimeStabilityV0181']) assert.match(composer, new RegExp(token));
+assert.match(composer, /const baseBuildingToggle = world\.setBuildingsEnabled\.bind\(world\)/);
 
 const foundations = fs.readFileSync(new URL('../src/building-foundation-v018.js', import.meta.url), 'utf8');
 assert.match(foundations, /sampleGeometry/);
 assert.match(foundations, /Math\.ceil\(len \/ 6\)/);
 assert.match(foundations, /const floor = max \+ 0\.10/);
-assert.match(foundations, /getWalkElevation/);
-assert.match(foundations, /BuildingFoundations-v018/);
-assert.match(foundations, /terrain-can-penetrate-floor/);
+assert.match(foundations, /alreadyRepresented/);
+assert.match(foundations, /this\.buildingFoundationModel/);
+assert.match(foundations, /state\.buildingsEnabled/);
+assert.doesNotMatch(foundations, /__buildingFoundationToggleV018/);
 assert.doesNotMatch(foundations, /Math\.random\(/);
+
+const stability = fs.readFileSync(new URL('../src/stability-v0181.js', import.meta.url), 'utf8');
+for (const token of ['prepareStructureReloadV0181','disposeGroupChildren','legacyBuildingGroupDetachedV0181','enrichTreeColliders','snapUnderstoryToTerrain','topY','rectoradoDetail']) assert.match(stability, new RegExp(token));
+assert.match(stability, /buildingGroup\?\.removeFromParent/);
+assert.doesNotMatch(stability, /verticalOffset > 2\.4/);
 
 const architecture = fs.readFileSync(new URL('../src/campus-architecture-v017.js', import.meta.url), 'utf8');
 assert.match(architecture, /wallColliders/);
@@ -77,4 +83,4 @@ assert.match(forestV2, /const CHUNK_M = 64/);
 assert.match(forestV2, /activeTreeColliderGrid/);
 assert.doesNotMatch(forestV2, /Math\.random\(/);
 
-console.log('ESPOL Builder v0.18 smoke tests: OK');
+console.log('ESPOL Builder v0.18.1 smoke tests: OK');

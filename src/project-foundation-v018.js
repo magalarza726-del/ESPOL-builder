@@ -2,13 +2,13 @@ import { CAMPUS } from './config.js';
 import { FACULTY_IDS } from './faculty-registry-v017.js';
 
 export const PROJECT = Object.freeze({
-  version: 'v0.18.0',
-  codename: 'TERRAIN-AWARE FOUNDATIONS + AGGRESSIVE STABILIZATION',
-  purpose: 'Una cota de planta por edificio derivada de toda su huella; terreno, interiores, fachadas y colisiones dejan de usar criterios verticales independientes.',
+  version: 'v0.18.1',
+  codename: 'AGGRESSIVE BUGFIX + TERRAIN FOUNDATION STABILITY',
+  purpose: 'Eliminar edificios duplicados, pisos invisibles, recargas con modelos obsoletos, Rectorado duplicado y colisiones forestales incoherentes.',
   featureFreeze: true,
   targetFps: 60,
   minimumHealthyFps: 45,
-  activeReconstruction: 'building-foundation-v018'
+  activeReconstruction: 'stability-v0181'
 });
 
 export function installProjectMetadata() {
@@ -18,7 +18,7 @@ export function installProjectMetadata() {
   globalThis.__ESPOL_PROJECT__ = { PROJECT, FACULTY_IDS };
 
   const badge = document.querySelector('.topbar .badge');
-  if (badge) badge.textContent = `${PROJECT.version} · TERRAIN FOUNDATIONS · STABILITY`;
+  if (badge) badge.textContent = `${PROJECT.version} · BUGFIX · TERRAIN/BUILDINGS/FOREST`;
 
   const buffer = globalThis.__ESPOL_RUNTIME_ERRORS__ ||= [];
   const remember = (type, payload) => {
@@ -45,9 +45,8 @@ export function installProjectMetadata() {
     }
   });
 
-  // runtime.js intentionally remains a stable core and still contains an old internal
-  // VERSION string. Normalize any legacy version prefix at the UI boundary instead of
-  // forking the runtime simply to change presentation text.
+  // runtime.js is kept as a stable core; normalize only its legacy version prefix
+  // at the presentation boundary instead of forking hundreds of lines of runtime.
   const toast = document.querySelector('#toast');
   if (toast && typeof MutationObserver !== 'undefined') {
     const normalizeRuntimeVersion = () => {
