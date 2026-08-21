@@ -4,41 +4,33 @@ const harness = config => Object.freeze({
   ...config
 });
 
+// Only two user-facing presets remain. Their keys intentionally reuse the
+// stable engine controllers: rpg = jetpack physics, shooter = weapon/aim.
+// Presentation IDs can differ from engine IDs so runtime.js can still apply
+// night-only flashlight UI without reintroducing four public modes.
 export const GAME_MODES = Object.freeze({
-  explore: harness({
-    id: 'explore',
-    label: 'Exploración',
-    sprintMultiplier: 5,
-    bodyClass: null,
-    hint: 'Exploración: Espacio = saltar · Shift = velocidad ×5'
-  }),
-  horror: harness({
-    id: 'horror',
-    label: 'Terror nocturno',
-    sprintMultiplier: 2.5,
-    bodyClass: 'mode-horror',
-    hint: 'Terror: linterna frontal · F = encender/apagar'
-  }),
   rpg: harness({
-    id: 'rpg',
-    label: 'RPG',
-    sprintMultiplier: 2.5,
-    bodyClass: 'mode-rpg',
-    hint: 'RPG: mantén Espacio = jetpack · suelta para descender'
+    id: 'day',
+    engineId: 'rpg',
+    label: 'Día',
+    sprintMultiplier: 5,
+    bodyClass: 'mode-day',
+    hint: 'Día: Shift = velocidad ×5 · mantén Espacio = jetpack'
   }),
   shooter: harness({
-    id: 'shooter',
-    label: 'Shooter sandbox',
+    id: 'horror',
+    engineId: 'shooter',
+    label: 'Noche',
     sprintMultiplier: 2.5,
-    bodyClass: 'mode-shooter',
-    hint: 'Shooter: clic izquierdo = disparar · cámara sobre hombro'
+    bodyClass: 'mode-horror',
+    hint: 'Noche: F = linterna · clic izquierdo = pistola'
   })
 });
 
 export const MODE_IDS = Object.freeze(Object.keys(GAME_MODES));
 
 export function getModeConfig(mode) {
-  return GAME_MODES[mode] || GAME_MODES.explore;
+  return GAME_MODES[mode] || GAME_MODES.rpg;
 }
 
 export function isGameMode(mode) {
