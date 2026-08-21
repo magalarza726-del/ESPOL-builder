@@ -46,7 +46,6 @@ assert.equal(FIMCP_SPATIAL_CONTROL.points.block24C.lat, -2.14499);
 assert.equal(FIMCP_SPATIAL_CONTROL.points.terminal.lng, -79.96532);
 assert.equal(FIMCP_SPATIAL_CONTROL.points.terminal.lat, -2.14504);
 
-// Reject a recurrence of the reported ~20x spatial distortion.
 const P = FIMCP_SPATIAL_CONTROL.points;
 assert.ok(haversine(P.parking, P.auditorium) < 85);
 assert.ok(haversine(P.auditorium, P.block18A) < 75);
@@ -93,7 +92,7 @@ assert.match(foundation, /spawn-outside-fimcp-core/);
 
 const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 for (const file of ['game3d_v016.js', 'project-foundation-v016.js', 'fimcp-spatial-control.js', 'fimcp-spatial-v016.js', 'day-night-v016.js']) {
-  assert.match(packageJson.scripts.check, new RegExp(file.replace('.', '\\.')));
+  assert.ok(packageJson.scripts.check.includes(file), `syntax check missing ${file}`);
 }
 assert.match(packageJson.scripts.test, /foundation\.mjs/);
 
