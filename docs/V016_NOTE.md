@@ -1,1 +1,0 @@
-Validation branch for v0.16 spatial control and Day/Night release.
