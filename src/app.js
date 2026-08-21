@@ -2,8 +2,8 @@
 // Install the exact FIMCP parking respawn before modules evaluate CAMPUS-derived constants.
 await import('./spawn-fimcp-v015.js');
 
-// v0.17 project metadata/error capture must exist before GIS/game systems boot.
-const { installProjectMetadata } = await import('./project-foundation-v017.js');
+// v0.18 metadata/error capture must exist before GIS/game systems boot.
+const { installProjectMetadata } = await import('./project-foundation-v018.js');
 installProjectMetadata();
 
 // Building footprints must be captured before runtime.js creates MapLibre.
