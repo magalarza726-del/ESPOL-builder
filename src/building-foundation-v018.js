@@ -7,7 +7,6 @@ const METERS_LAT = 110574;
 const METERS_LNG = 111320 * Math.cos(CAMPUS.spawn.lat * DEG);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const toLocal = (lng, lat) => ({ x: (lng - CAMPUS.spawn.lng) * METERS_LNG, z: -(lat - CAMPUS.spawn.lat) * METERS_LAT });
-const toLngLat = (x, z) => ({ lng: CAMPUS.spawn.lng + x / METERS_LNG, lat: CAMPUS.spawn.lat - z / METERS_LAT });
 
 function polygons(g) {
   if (g?.type === 'Polygon') return [g.coordinates];
@@ -102,7 +101,7 @@ function sampleGeometry(record, baseElevation) {
       push(a[0], a[1]);
       const A = toLocal(a[0], a[1]), B = toLocal(b[0], b[1]);
       const len = Math.hypot(B.x - A.x, B.z - A.z);
-      const divisions = Math.max(1, Math.min(8, Math.ceil(len / 6)));
+      const divisions = Math.max(1, Math.min(10, Math.ceil(len / 6)));
       for (let n = 1; n < divisions; n++) {
         const t = n / divisions;
         push(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t);
@@ -112,9 +111,10 @@ function sampleGeometry(record, baseElevation) {
   const b = bounds(record.geometry);
   if (b) {
     push(b.lng, b.lat);
-    for (let ix = 1; ix <= 3; ix++) for (let iz = 1; iz <= 3; iz++) {
-      const lng = b.minLng + (b.maxLng - b.minLng) * ix / 4;
-      const lat = b.minLat + (b.maxLat - b.minLat) * iz / 4;
+    // Interior samples catch DEM peaks that edge-only sampling would miss.
+    for (let ix = 1; ix <= 4; ix++) for (let iz = 1; iz <= 4; iz++) {
+      const lng = b.minLng + (b.maxLng - b.minLng) * ix / 5;
+      const lat = b.minLat + (b.maxLat - b.minLat) * iz / 5;
       if (containsGeometry(record.geometry, lng, lat)) push(lng, lat);
     }
   }
@@ -129,12 +129,20 @@ function shapeFromRings(rings) {
   for (const holeRing of (rings || []).slice(1)) {
     const holePts = cleanRing(holeRing).map(c => toLocal(c[0], c[1]));
     if (holePts.length < 3) continue;
-    const hole = new THREE.Path(); holePts.forEach((p, i) => i ? hole.lineTo(p.x, -p.z) : hole.moveTo(p.x, -p.z)); hole.closePath(); shape.holes.push(hole);
+    const hole = new THREE.Path();
+    holePts.forEach((p, i) => i ? hole.lineTo(p.x, -p.z) : hole.moveTo(p.x, -p.z));
+    hole.closePath(); shape.holes.push(hole);
   }
   return shape;
 }
 function disposeGroup(group) {
-  group?.traverse?.(o => { o.geometry?.dispose?.(); if (Array.isArray(o.material)) o.material.forEach(m => m?.dispose?.()); else o.material?.dispose?.(); });
+  const materials = new Set();
+  group?.traverse?.(o => {
+    o.geometry?.dispose?.();
+    if (Array.isArray(o.material)) o.material.forEach(m => materials.add(m));
+    else if (o.material) materials.add(o.material);
+  });
+  for (const m of materials) m?.dispose?.();
   group?.removeFromParent?.();
 }
 
@@ -148,8 +156,7 @@ export function buildFoundationModel(world, structures = {}) {
     const samples = sampleGeometry(record, baseElevation); if (!samples.length) continue;
     const values = samples.map(s => s.elevation).sort((a,b) => a-b);
     const min = values[0], max = values.at(-1), median = values[Math.floor(values.length / 2)];
-    // A building slab must never be intersected by the terrain. Put finished floor
-    // just above the highest sampled terrain and fill the exposed difference with a foundation skirt.
+    // Finished floor is horizontal and guaranteed to clear the complete sampled terrain.
     const floor = max + 0.10;
     foundations.push({
       id: String(record.id ?? record.key ?? `${center.lng}:${center.lat}`), record, center,
@@ -161,7 +168,9 @@ export function buildFoundationModel(world, structures = {}) {
     records: foundations,
     baseElevation,
     centerElevation(lng, lat) {
-      let best = null, bestD = 1.8;
+      // v0.17 asks elevation at exactly each record centre. Keep this matching radius
+      // intentionally tiny so road/vegetation midpoint queries cannot accidentally hit a slab.
+      let best = null, bestD = 0.35;
       for (const f of foundations) {
         const d = distanceM({lng,lat}, f.center);
         if (d < bestD) { best = f; bestD = d; }
@@ -181,6 +190,7 @@ export function buildFoundationModel(world, structures = {}) {
     }
   };
   world.buildingFoundationModel = model;
+  world.__foundationModelsBuilt = (world.__foundationModelsBuilt || 0) + 1;
   return model;
 }
 
@@ -194,6 +204,7 @@ export function installFoundationSkirts(world, model) {
   const previous = world.scene.getObjectByName('BuildingFoundations-v018');
   if (previous) disposeGroup(previous);
   const root = new THREE.Group(); root.name = 'BuildingFoundations-v018';
+  root.visible = world.buildingsEnabled !== false;
   const mat = new THREE.MeshBasicMaterial({ color: 0x9c9d96, toneMapped: false });
   let meshes = 0;
   for (const f of model.records) {
@@ -219,17 +230,34 @@ export function installFoundationSkirts(world, model) {
 }
 
 export function installWalkSurface(world, model) {
-  world.getWalkElevation = (lng, lat) => model.walkElevation(lng, lat);
+  world.buildingFoundationModel = model;
+  world.getWalkElevation = (lng, lat) => {
+    const current = world.buildingFoundationModel;
+    return world.buildingsEnabled === false ? current.baseElevation(lng, lat) : current.walkElevation(lng, lat);
+  };
+
+  if (!world.__buildingFoundationToggleV018) {
+    world.__buildingFoundationToggleV018 = true;
+    const baseToggle = world.setBuildingsEnabled?.bind(world);
+    world.setBuildingsEnabled = value => {
+      baseToggle?.(value);
+      if (world.__buildingFoundationRootV018) world.__buildingFoundationRootV018.visible = !!value;
+    };
+  }
+
   if (world.__walkSurfaceRenderV018) return;
   world.__walkSurfaceRenderV018 = true;
   const baseRender = world.render.bind(world);
   world.render = function(player, state, dt) {
+    if (this.__buildingFoundationRootV018) this.__buildingFoundationRootV018.visible = !!state.buildingsEnabled;
     const rawGetElevation = this.getElevation;
     const playerPoint = { lng: player.lng, lat: player.lat };
     this.getElevation = (lng, lat) => {
       // Only substitute the player's own elevation query. Forest, roads and terrain keep
       // consuming the original terrain surface and cannot be lifted onto building slabs.
-      if (distanceM(playerPoint, {lng,lat}) < 0.08) return model.walkElevation(lng, lat);
+      if (state.buildingsEnabled && distanceM(playerPoint, {lng,lat}) < 0.08) {
+        return this.buildingFoundationModel?.walkElevation(lng, lat) ?? rawGetElevation(lng, lat);
+      }
       return rawGetElevation(lng, lat);
     };
     try { return baseRender(player, state, dt); }
@@ -252,6 +280,6 @@ export function auditBuildingFoundations(world, model) {
     degraded: hardErrors.length === 0 && warnings.length > 0,
     hardErrors: Object.freeze(hardErrors),
     warnings: Object.freeze(warnings),
-    metrics: Object.freeze({ ...(world.buildingFoundationReport || {}) })
+    metrics: Object.freeze({ ...(world.buildingFoundationReport || {}), modelBuilds: world.__foundationModelsBuilt || 0 })
   });
 }
