@@ -1,1 +1,0 @@
-Branch contains the v0.16 candidate to publish.
