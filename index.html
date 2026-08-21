@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <meta name="theme-color" content="#07131f" />
   <title>ESPOL Builder — Campus Gustavo Galindo 1:1</title>
-  <meta name="description" content="Master world jugable 1:1 de ESPOL. v0.15 incorpora la primera reconstrucción fotográfica de campo de FIMCP usando 100 vistas secuenciales." />
+  <meta name="description" content="Master world jugable 1:1 de ESPOL. v0.16 corrige el control espacial de FIMCP y simplifica la experiencia a Día y Noche." />
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
   <link rel="preconnect" href="https://s3.amazonaws.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="./assets/styles.css" />
-  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","./src/game3d.js":"./src/game3d_v014.js"}}</script>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","./src/game3d.js":"./src/game3d_v016.js"}}</script>
 </head>
 <body class="game-mode">
   <div id="map" aria-label="Mapa GIS de ESPOL"></div>
@@ -22,12 +22,12 @@
     <div class="loader-card">
       <div class="loader-mark">EB</div><h1>ESPOL Builder</h1>
       <p id="loadingText">Preparando ESPOL…</p><div class="bar"><span id="loadingBar"></span></div>
-      <small>Terreno físico=visual · edificios Mapa=3D · Forest System V2 · FIMCP 100 vistas</small>
+      <small>Terreno físico=visual · edificios Mapa=3D · Forest System V2 · FIMCP con control espacial</small>
     </div>
   </div>
 
   <header class="topbar glass">
-    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.15.0 · FIMCP PHOTO SURVEY · 100 VISTAS</span></div>
+    <div><strong>ESPOL BUILDER</strong><span class="badge">v0.16.0 · FIMCP SPATIAL CONTROL · DÍA/NOCHE</span></div>
     <div class="top-actions">
       <button id="btnOverview" title="Mapa GIS de ESPOL (1)">Mapa</button>
       <button id="btnFollow" class="active" title="Tercera persona sobre el hombro (2)">3ª persona</button>
@@ -43,7 +43,7 @@
       <div><span>Rumbo</span><b id="bearing">0°</b></div><div><span>Vista</span><b id="viewMode">3ª persona</b></div>
     </div>
     <div class="coords"><span>Posición</span><b id="coords">—</b></div>
-    <div class="objective"><span>Reconstrucción activa</span><b id="objective">Valida FIMCP: Auditorio, parqueadero, LEMAT, corredores, patios y servicios</b><div id="progressDots" class="progress-dots"></div></div>
+    <div class="objective"><span>Reconstrucción activa</span><b id="objective">Valida FIMCP con las distancias del GIS y la red de control espacial</b><div id="progressDots" class="progress-dots"></div></div>
   </section>
 
   <section class="perf-panel glass" id="perfPanel" aria-label="Profiler de rendimiento">
@@ -66,18 +66,18 @@
     </div>
 
     <div class="season-card"><div><span>Estado estacional del bosque</span><b id="seasonLabel">Seca</b></div><input id="season" type="range" min="0" max="100" value="25" /><div class="season-scale"><span>seca / semideciduo</span><span>lluviosa / rebrote</span></div></div>
-    <div class="mode-card"><span>Plantilla de prueba</span><select id="gameMode"><option value="explore">Exploración</option><option value="horror">Terror nocturno</option><option value="rpg">RPG</option><option value="shooter">Shooter sandbox</option></select><small id="modeActionHint">Los modos siguen siendo pruebas del master world; v0.15 prioriza la reconstrucción de FIMCP.</small></div>
+    <div class="mode-card"><span>Modalidad</span><select id="gameMode"><option value="rpg">Día</option><option value="shooter">Noche</option></select><small id="modeActionHint">Día: Shift ×5 + jetpack. Noche: linterna + pistola.</small></div>
 
-    <div class="fact-strip"><div><b>FIMCP</b><span>slice fotográfico</span></div><div><b>100</b><span>vistas de campo</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
+    <div class="fact-strip"><div><b>FIMCP</b><span>control espacial</span></div><div><b>2</b><span>modalidades</span></div><div><b>1:1</b><span>escala métrica</span></div></div>
 
-    <details open><summary>Objetivo de v0.15</summary><p class="fineprint">FIMCP es la primera zona reconstruida usando un recorrido fotográfico de campo completo. Las huellas y alturas siguen ancladas al GIS/documentación; las 100 vistas gobiernan fachadas, estacionamientos, LEMAT, corredores, patio, zonas técnicas y borde de transporte. El respawn se ubica en el parqueadero frontal documentado por FIMCP_06–09.</p></details>
+    <details open><summary>Objetivo de v0.16</summary><p class="fineprint">La secuencia de 100 fotos deja de determinar posiciones globales por inferencia. Auditorio FIMCP, parqueadero, Bloque 18-A, Comedor FIMCP, 24C y Terminal se fijan mediante coordenadas GIS/OSM; las fotos sólo añaden detalle local alrededor de esas anclas. LEMAT/24E no se colocan arbitrariamente si su huella no puede identificarse.</p></details>
     <details><summary>Vegetación investigada</summary><p class="fineprint">La estructura arbórea se calibra con parcelas baja, media y alta de ESPOL; el sotobosque incorpora arbustos, herbáceas, trepadoras y epífitas. La distribución sigue siendo reconstrucción procedural, no un censo georreferenciado árbol por árbol.</p><div id="speciesList" class="species-list"></div></details>
     <details><summary>Edificios documentados</summary><div id="buildingList" class="building-list"></div></details>
-    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre. Primera/tercera persona usan Three.js. Ambos comparten huellas de edificios; el terreno visible alimenta la física; el bosque usa una única ForestDatabase determinista por chunks. FIMCP añade detalle fotográfico sobre esas mismas masas sincronizadas, sin cargar las fotos pesadas en runtime.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Arquitectura, calidad y fuentes</a></details>
+    <details><summary>Arquitectura y rendimiento</summary><p class="fineprint">Mapa usa MapLibre y gameplay Three.js. Ambos comparten huellas GIS. v0.16 añade una red de control espacial de FIMCP para impedir que edificios de otras zonas entren en la reconstrucción fotográfica. Día reutiliza el controlador de jetpack; Noche combina iluminación oscura, linterna y controlador de pistola.</p><a class="source-link" href="./README.md" target="_blank" rel="noopener">Arquitectura, calidad y fuentes</a></details>
   </aside>
 
   <button id="panelOpen" class="panel-open glass" hidden>☰ Capas</button>
-  <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> salto / jetpack</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×5</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIMCP</span><span><kbd>F</kbd> linterna (Terror)</span><span class="fp-help">Shooter: clic = disparar</span></div>
+  <div class="controls glass"><b>CONTROLES</b><span><kbd>WASD</kbd> mover</span><span><kbd>Q/E</kbd> girar</span><span><kbd>Espacio</kbd> jetpack Día / salto Noche</span><span><kbd>Shift</kbd> <span id="sprintLegend">sprint ×5</span></span><span><kbd>1/2/3</kbd> Mapa / 3ª / 1ª</span><span><kbd>R</kbd> reaparecer FIMCP</span><span><kbd>F</kbd> linterna (Noche)</span><span class="fp-help">Noche: clic = disparar</span></div>
   <div id="toast" class="toast glass" aria-live="polite"></div>
   <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
 
